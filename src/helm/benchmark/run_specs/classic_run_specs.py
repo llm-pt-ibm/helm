@@ -645,6 +645,29 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
         groups=[f"code_{dataset}"],
     )
 
+@run_spec_function("humanevalxlcode")
+def get_code_spec(dataset: str, timeout=3) -> RunSpec:
+    # `timeout` trades accuracy for time. Used exclusively for APPS. Default from original APPS codebase.
+    scenario_spec = ScenarioSpec(
+        class_name="helm.benchmark.scenarios.humanevalxl_code_scenario.HumanEvalXLCodeScenario", args={"dataset": dataset}
+    )
+
+    adapter_spec = get_completion_adapter_spec(
+        temperature=0.2,
+        # Taken from the original OpenAI paper to prevent the further generation of irrelevant classes/functions
+        stop_sequences=["\nclass", "\ndef", "\nif", "\nprint"],
+        max_tokens=600,
+    )
+
+    code_metric_specs = get_basic_metric_specs(["code_eval_acc", "pass"])
+
+    return RunSpec(
+        name=f"code:dataset={dataset}",
+        scenario_spec=scenario_spec,
+        adapter_spec=adapter_spec,
+        metric_specs=code_metric_specs + get_generative_harms_metric_specs(),
+        groups=[f"code_{dataset}"],
+    )
 
 @run_spec_function("the_pile")
 def get_the_pile_spec(subset: str) -> RunSpec:
