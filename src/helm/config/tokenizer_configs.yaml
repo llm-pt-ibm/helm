@@ -633,10 +633,10 @@ tokenizer_configs:
     prefix_token: "<|begin_of_text|>"
 
 #Granite3-Code-Instruct-128K
-  - name: ibm-granite/granite-8b-code-base-4k
+  - name: ibm-granite/granite-8b-code-instruct-128k
     tokenizer_spec:
         class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
         args:
-            pretrained_model_name_or_path: ibm-granite/granite-8b-code-base-4k
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-instruct-128k
     end_of_text_token: ""
     prefix_token: ""
