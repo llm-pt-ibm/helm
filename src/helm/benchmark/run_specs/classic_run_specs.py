@@ -613,6 +613,8 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
     if dataset == "humaneval":
         adapter_spec = get_completion_adapter_spec(
             temperature=0.0,
+            # Taken from the original OpenAI paper to prevent the further generation of irrelevant classes/functions
+            stop_sequences=["\nclass", "\ndef", "\nif", "\nprint"],
             max_tokens=1024,
         )
     else:  # apps.
