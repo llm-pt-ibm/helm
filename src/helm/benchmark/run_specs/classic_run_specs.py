@@ -613,7 +613,7 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
     if dataset == "humaneval":
         adapter_spec = get_completion_adapter_spec(
             temperature=0.0,
-            max_tokens=2048,
+            max_tokens=1024,
         )
     else:  # apps.
         # Different in `stop_sequences`.
