@@ -614,7 +614,7 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
         adapter_spec = get_completion_adapter_spec(
             temperature=0.2,
             # Taken from the original OpenAI paper to prevent the further generation of irrelevant classes/functions
-            stop_sequences=["<|endoftext|>"],
+            stop_sequences=["\nclass", "\ndef", "\nif", "\nprint", "<|endoftext|>"],
             max_tokens=1024,
         )
     else:  # apps.
