@@ -638,5 +638,5 @@ tokenizer_configs:
         class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
         args:
             pretrained_model_name_or_path: ibm-granite/granite-8b-code-instruct-128k
-    end_of_text_token: "<|eot_id|>"
-    prefix_token: "<|begin_of_text|>"
+    end_of_text_token: "<|endoftext|>"
+    prefix_token: "<|endoftext|>"
