@@ -625,11 +625,8 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
     else:  # apps.
         # Different in `stop_sequences`.
         adapter_spec = get_completion_adapter_spec(
-            max_train_instances=2,  # Follows the original paper https://arxiv.org/pdf/2105.09938.pdf Appendix D.
             temperature=0.2,
-            stop_sequences=[
-                "<|endoftext|>"
-            ],  # Manually selected by @lxuechen to prevent the further generation of irrelevant classes/functions
+            stop_sequences=[],  # Manually selected by @lxuechen to prevent the further generation of irrelevant classes/functions
             max_tokens=600,
         )
 
