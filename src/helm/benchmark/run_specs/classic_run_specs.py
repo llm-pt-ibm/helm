@@ -628,10 +628,7 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
             max_train_instances=2,  # Follows the original paper https://arxiv.org/pdf/2105.09938.pdf Appendix D.
             temperature=0.2,
             stop_sequences=[
-                "'''",
-                "---",
-                '"""',
-                "\n\n\n",
+                "<|endoftext|>"
             ],  # Manually selected by @lxuechen to prevent the further generation of irrelevant classes/functions
             max_tokens=600,
         )
