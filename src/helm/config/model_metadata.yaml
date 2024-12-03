@@ -3327,3 +3327,13 @@ models:
     num_parameters: 8050000000
     release_date: 2024-07-18
     tags: ['TEXT_MODEL_TAG']
+
+# Code Llama
+  - name: meta-llama/CodeLlama-7b-hf
+    display_name: Code Llama 7B 
+    description: Code Generation 
+    creator_organization_name: Meta
+    access: open
+    num_parameters: 6740000000
+    release_date: 2023-07-01
+    tags: ['TEXT_MODEL_TAG']
