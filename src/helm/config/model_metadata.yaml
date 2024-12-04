@@ -3337,3 +3337,13 @@ models:
     num_parameters: 6740000000
     release_date: 2023-07-01
     tags: ['TEXT_MODEL_TAG']
+
+# Code Llama Instruct - 7B
+  - name: meta-llama/CodeLlama-7b-Instruct-hf
+    display_name: Code Llama Instruct 7B 
+    description: Code Generation 
+    creator_organization_name: Meta
+    access: open
+    num_parameters: 6740000000
+    release_date: 2023-07-01
+    tags: ['TEXT_MODEL_TAG']
