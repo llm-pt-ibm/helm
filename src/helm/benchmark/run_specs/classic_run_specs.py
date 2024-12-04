@@ -612,6 +612,7 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
 
     if dataset == "humaneval":
         adapter_spec = get_completion_adapter_spec(
+            instructions= 'Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n### Instruction:\nCreate a Python script for this problem:\n{prompt}\n\n### Response:\n',
             temperature=0.2,
             # Taken from the original OpenAI paper to prevent the further generation of irrelevant classes/functions
             stop_sequences=["\nclass", "\ndef", "\nif", "\nprint"],
