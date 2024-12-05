@@ -641,6 +641,15 @@ tokenizer_configs:
     prefix_token: ""
     end_of_text_token: "<|endoftext|>"
 
+# Granite3-Code-Base-128K
+  - name: ibm-granite/granite-8b-code-base-128k
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-base-128k
+    prefix_token: ""
+    end_of_text_token: "<|endoftext|>"
+
 # Code Llama - 7B
   - name: meta-llama/CodeLlama-7b-hf
     tokenizer_spec:

@@ -3328,6 +3328,16 @@ models:
     release_date: 2024-07-18
     tags: ['TEXT_MODEL_TAG']
 
+#Granite3-Code-Base-128K
+  - name: ibm-granite/granite-8b-code-base-128k
+    display_name: Granite 8B Code Base 128K
+    description: Code Generation 
+    creator_organization_name: IBM-GRANITE
+    access: open
+    num_parameters: 8050000000
+    release_date: 2024-07-18
+    tags: ['TEXT_MODEL_TAG']
+
 # Code Llama
   - name: meta-llama/CodeLlama-7b-hf
     display_name: Code Llama 7B 
