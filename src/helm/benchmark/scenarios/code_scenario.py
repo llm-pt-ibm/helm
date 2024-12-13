@@ -299,7 +299,7 @@ class CodeScenario(Scenario):
         super().__init__()
         self.dataset = dataset
 
-        self.human_eval_hparams = dict(num_train_instances=0, num_val_instances=0, num_test_instances=164)
+        self.human_eval_hparams = dict(num_train_instances=66, num_val_instances=30, num_test_instances=50)
 
     def get_instances(self, output_path: str) -> List[Instance]:
         # By construction, output_path == 'benchmark_output/scenarios/code'.
