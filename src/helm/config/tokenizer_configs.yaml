@@ -836,3 +836,21 @@ tokenizer_configs:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-1b-a400m-base
     prefix_token: ""
     end_of_text_token: ""
+  
+# Granite3-Code-Instruct-128K
+  - name: ibm-granite/granite-8b-code-instruct-128k
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-instruct-128k
+    prefix_token: ""
+    end_of_text_token: "<|endoftext|>"
+
+# Granite3-Code-Base-128K
+  - name: ibm-granite/granite-8b-code-base-128k
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-base-128k
+    prefix_token: ""
+    end_of_text_token: "<|endoftext|>"
