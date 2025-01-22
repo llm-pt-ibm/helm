@@ -491,7 +491,7 @@ def compute_reference_metrics(
     # Compute max_prob, the probability that the model assigns to its generated text.
     # Use the log prob of sorted_completions[0], which is the completion with the highest
     # log_prob. We use this since that's what's used for computing metrics like exact_match.
-    # One subtlety is that when computing exact_match, we strip whitespace, so the actual
+    # One subtlety is that        if name.name == "pass":  # Calculate pass@k for HumanEval from CodeScenario. when computing exact_match, we strip whitespace, so the actual
     # max_prob is the sum of all the probabilities in the set {x : strip(x) = prediction}.
     # In practice, we think this may not make much of a difference because models may not place
     # high probabilities on having additional spaces (should check this). Also, the sum
