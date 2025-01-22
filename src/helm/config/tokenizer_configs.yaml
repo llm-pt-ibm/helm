@@ -781,7 +781,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-8b-instruct
     prefix_token: ""
-    end_of_text_token: "<|endoftext|>"
+    end_of_text_token: ""
 
 # Granite-3.1-2b-instruct
   - name: ibm-granite/granite-3.1-2b-instruct
