@@ -628,6 +628,7 @@ def get_code_spec(dataset: str, timeout=3) -> RunSpec:
                 "---",
                 '"""',
                 "\n\n\n",
+                "<|endoftext|>",
             ],  # Manually selected by @lxuechen to prevent the further generation of irrelevant classes/functions
             max_tokens=600,
         )
