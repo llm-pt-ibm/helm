@@ -3745,3 +3745,23 @@ models:
     num_parameters: 1330000000
     release_date: 2024-12-18
     tags: [TEXT_MODEL_TAG]
+
+# Code Llama - 7b
+  - name: meta-llama/CodeLlama-7b-hf
+    display_name: Meta LLama - Code Llama-7b-hf
+    description: Model Llama - Generation Code
+    creator_organization_name: Meta
+    access: open
+    num_parameters: 6740000000
+    release_date: 2023-07-01
+    tags: [CODE_MODEL_TAG]
+
+# Llama 3.1 - 8b
+  - name: meta-llama/Llama-3.1-8B
+    display_name: Meta Llama - Llama-3.1-8B
+    description: Llama 3.1 - 8B
+    creator_organization_name: Meta
+    access: open
+    num_parameters: 8030000000 
+    release_date: 2024-07-23
+    tags: [TEXT_MODEL_TAG]

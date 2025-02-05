@@ -868,3 +868,21 @@ tokenizer_configs:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-1b-a400m-base
     prefix_token: ""
     end_of_text_token: ""
+
+# Code Llama - 7b
+  - name: meta-llama/CodeLlama-7b-hf
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: meta-llama/CodeLlama-7b-hf
+    prefix_token: ""
+    end_of_text_token: "</s>"
+
+# Llama 3.1 - 8b
+  - name: meta-llama/Llama-3.1-8B
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: meta-llama/Llama-3.1-8B
+    prefix_token: ""
+    end_of_text_token: "<|eot_id|>"
