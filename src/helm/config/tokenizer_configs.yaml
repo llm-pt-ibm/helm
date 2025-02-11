@@ -730,7 +730,7 @@ tokenizer_configs:
       class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
       args:
         pretrained_model_name_or_path: ibm-granite/granite-3.0-2b-base
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
     prefix_token: ""
 
   - name: ibm-granite/granite-3.0-2b-instruct
@@ -738,7 +738,7 @@ tokenizer_configs:
       class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
       args:
         pretrained_model_name_or_path: ibm-granite/granite-3.0-2b-instruct
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
     prefix_token: ""
   
   - name: ibm-granite/granite-3.0-8b-instruct
@@ -746,7 +746,7 @@ tokenizer_configs:
       class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
       args:
         pretrained_model_name_or_path: ibm-granite/granite-3.0-8b-instruct
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
     prefix_token: ""
 
   - name: ibm-granite/granite-3.0-8b-base
@@ -754,7 +754,7 @@ tokenizer_configs:
       class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
       args:
         pretrained_model_name_or_path: ibm-granite/granite-3.0-8b-base
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
     prefix_token: ""
 
   - name: ibm-granite/granite-3.0-3b-a800m-instruct
@@ -822,7 +822,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-2b-instruct
     prefix_token: ""
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
 
 # Granite-3.1-2b-base
   - name: ibm-granite/granite-3.1-2b-base
@@ -831,7 +831,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-2b-base
     prefix_token: ""
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
 
 # Granite-3.1-3b-a800m-instruct
   - name: ibm-granite/granite-3.1-3b-a800m-instruct
@@ -840,7 +840,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-3b-a800m-instruct
     prefix_token: ""
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
 
 # Granite-3.1-3b-a800m-base
   - name: ibm-granite/granite-3.1-3b-a800m-base
@@ -849,7 +849,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-3b-a800m-base
     prefix_token: ""
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
 
 # Granite-3.1-1b-a400m-instruct
   - name: ibm-granite/granite-3.1-1b-a400m-instruct
@@ -858,7 +858,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-1b-a400m-instruct
     prefix_token: ""
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
 
 # Granite-3.1-1b-a400m-base
   - name: ibm-granite/granite-3.1-1b-a400m-base
@@ -867,4 +867,4 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-1b-a400m-base
     prefix_token: ""
-    end_of_text_token: ""
+    end_of_text_token: "<|endoftext|>"
