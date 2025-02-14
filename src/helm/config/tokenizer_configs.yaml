@@ -724,6 +724,24 @@ tokenizer_configs:
     end_of_text_token: "<|eot_id|>"
     prefix_token: "<|begin_of_text|>"
 
+# Granite3-Code-Instruct-128K
+  - name: ibm-granite/granite-8b-code-instruct-128k
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-instruct-128k
+    prefix_token: ""
+    end_of_text_token: "<|endoftext|>"
+
+# Granite3-Code-Base-128K
+  - name: ibm-granite/granite-8b-code-base-128k
+    tokenizer_spec:
+        class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-base-128k
+    prefix_token: ""
+    end_of_text_token: "<|endoftext|>"
+  
   # IBM - Granite 3.0
   - name: ibm-granite/granite-3.0-2b-base
     tokenizer_spec:
