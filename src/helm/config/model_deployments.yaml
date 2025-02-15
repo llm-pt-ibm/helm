@@ -3138,3 +3138,13 @@ model_deployments:
         class_name: "helm.clients.huggingface_client.HuggingFaceClient"
         args:
             pretrained_model_name_or_path: deepseek-ai/deepseek-coder-6.7b-instruct
+
+# deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+  - name: huggingface/DeepSeek-R1-Distill-Qwen-7B
+    model_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    tokenizer_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    max_sequence_length: 128000
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
