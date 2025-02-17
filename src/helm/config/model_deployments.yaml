@@ -3195,3 +3195,13 @@ model_deployments:
         class_name: "helm.clients.huggingface_client.HuggingFaceClient"
         args:
             pretrained_model_name_or_path: deepseek-ai/deepseek-coder-6.7b-instruct
+
+# Code Llama - 7b
+  - name: huggingface/CodeLlama-7b-hf
+    model_name: meta-llama/CodeLlama-7b-hf
+    tokenizer_name: meta-llama/CodeLlama-7b-hf
+    max_sequence_length: 100000
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: meta-llama/CodeLlama-7b-hf
