@@ -902,7 +902,8 @@ tokenizer_configs:
         class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
         args:
             pretrained_model_name_or_path: berchielli/cabrita-7b-pt-br
-            legacy: False 
+            legacy: False
+            use_fast: False
     prefix_token: ""
     end_of_text_token: "<|eot_id|>"
 
