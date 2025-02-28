@@ -3873,3 +3873,33 @@ models:
     num_parameters: 8030000000 
     release_date: 2024-07-23
     tags: [TEXT_MODEL_TAG]
+
+# Cabrita - 7b
+  - name: berchielli/cabrita-7b-pt-br
+    display_name: Cabrita 7B
+    description: Model Pt-br
+    creator_organization_name: berchielli
+    access: open
+    num_parameters: 6740000000
+    release_date: 2022-07-23
+    tags: [TEXT_MODEL_TAG]
+
+# Bode 7b
+  - name: recogna-nlp/bode-7b-alpaca-pt-br
+    display_name: Bode 7b
+    description: Model Pt-br
+    creator_organization_name: recogna-nlp
+    access: open
+    num_parameters: 6740000000
+    release_date: 2022-07-23
+    tags: [TEXT_MODEL_TAG]
+
+# Tucano 2b
+  - name: TucanoBR/Tucano-2b4
+    display_name: Tucano 2b
+    description: Model Pt-br
+    creator_organization_name: TucanoBR
+    access: open
+    num_parameters: 2444618240
+    release_date: 2022-07-23
+    tags: [TEXT_MODEL_TAG]

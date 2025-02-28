@@ -3252,3 +3252,33 @@ model_deployments:
         class_name: "helm.clients.huggingface_client.HuggingFaceClient"
         args:
             pretrained_model_name_or_path: meta-llama/Llama-3.1-8B
+     
+# Cabrita-7b
+  - name: huggingface/cabrita-7b-pt-br
+    model_name: berchielli/cabrita-7b-pt-br
+    tokenizer_name: berchielli/cabrita-7b-pt-br
+    max_sequence_length: 2048
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: berchielli/cabrita-7b-pt-br
+
+# Bode 7b
+  - name: huggingface/bode-7b-alpaca-pt-br
+    model_name: recogna-nlp/bode-7b-alpaca-pt-br
+    tokenizer_name: recogna-nlp/bode-7b-alpaca-pt-br
+    max_sequence_length: 2048
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: recogna-nlp/bode-7b-alpaca-pt-br
+
+# Tucano 2b
+  - name: huggingface/Tucano-2b4
+    model_name: TucanoBR/Tucano-2b4
+    tokenizer_name: TucanoBR/Tucano-2b4
+    max_sequence_length: 4096
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: TucanoBR/Tucano-2b4
