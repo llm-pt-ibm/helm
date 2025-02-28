@@ -901,9 +901,7 @@ tokenizer_configs:
     tokenizer_spec:
         class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
         args:
-            pretrained_model_name_or_path: berchielli/cabrita-7b-pt-br
-            legacy: False
-            use_fast: False
+            pretrained_model_name_or_path: baffo32/decapoda-research-llama-7B-hf
     prefix_token: ""
     end_of_text_token: "<|eot_id|>"
 
