@@ -902,8 +902,10 @@ tokenizer_configs:
         class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
         args:
             pretrained_model_name_or_path: berchielli/cabrita-7b-pt-br
+            legacy: False 
     prefix_token: ""
     end_of_text_token: "<|eot_id|>"
+
 
 # Bode 7b
   - name: recogna-nlp/bode-7b-alpaca-pt-br
