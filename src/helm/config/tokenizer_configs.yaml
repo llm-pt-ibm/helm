@@ -746,7 +746,7 @@ tokenizer_configs:
       class_name: "helm.tokenizers.huggingface_tokenizer.HuggingFaceTokenizer"
       args:
         pretrained_model_name_or_path: ibm-granite/granite-3.0-8b-instruct
-    end_of_text_token: "<|endoftext|>"
+    end_of_text_token: "<|end_of_text|>"
     prefix_token: ""
 
   - name: ibm-granite/granite-3.0-8b-base
@@ -813,7 +813,7 @@ tokenizer_configs:
         args:
             pretrained_model_name_or_path: ibm-granite/granite-3.1-8b-instruct
     prefix_token: ""
-    end_of_text_token: "<|endoftext|>"
+    end_of_text_token: "<|end_of_text|>"
 
 # Granite-3.1-2b-instruct
   - name: ibm-granite/granite-3.1-2b-instruct
