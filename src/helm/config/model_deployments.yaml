@@ -3282,3 +3282,24 @@ model_deployments:
         class_name: "helm.clients.huggingface_client.HuggingFaceClient"
         args:
             pretrained_model_name_or_path: TucanoBR/Tucano-2b4
+
+# Llama 2-7b
+  - name: huggingface/Llama-2-7b-hf
+    model_name: meta-llama/Llama-2-7b-hf
+    tokenizer_name: meta-llama/Llama-2-7b-hf
+    max_sequence_length: 8192
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: meta-llama/Llama-2-7b-hf
+          
+
+# Llama 3.2 - 3b
+  - name: huggingface/Llama-3.2-3B
+    model_name: meta-llama/Llama-3.2-3B
+    tokenizer_name: meta-llama/Llama-3.2-3B
+    max_sequence_length: 8192
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: meta-llama/Llama-3.2-3B

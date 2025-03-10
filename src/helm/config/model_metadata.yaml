@@ -3903,3 +3903,13 @@ models:
     num_parameters: 2444618240
     release_date: 2022-07-23
     tags: [TEXT_MODEL_TAG]
+
+# Llama 3.2 - 3b
+  - name: meta-llama/Llama-3.2-3B
+    display_name: Llama 3.2 - 3b
+    description: Model Llama
+    creator_organization_name: Meta
+    access: open
+    num_parameters: 3210000000
+    release_date: 2022-07-23
+    tags: [TEXT_MODEL_TAG]
