@@ -3331,3 +3331,10 @@ model_deployments:
         class_name: "helm.clients.huggingface_client.HuggingFaceClient"
         args:
             pretrained_model_name_or_path: deepseek-ai/deepseek-coder-6.7b-instruct
+
+  - name: "deepseek-ai/deepseek-coder-6.7b-instruct"
+    model_name: "deepseek-ai/deepseek-coder-6.7b-instruct"
+    tokenizer_name: "openai/o200k_base"
+    max_sequence_length: 8192
+    client_spec:
+      class_name: "helm.clients.deepseek_power10_client.DirectSSHDeepSeekClient"
