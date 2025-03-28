@@ -3522,3 +3522,23 @@ model_deployments:
     max_sequence_length: 8192
     client_spec:
       class_name: "helm.clients.deepseek_power10_client.DirectSSHDeepSeekClient"
+      
+# Granite3-Code-Instruct-128K
+  - name: huggingface/granite-8b-code-instruct-128k
+    model_name: ibm-granite/granite-8b-code-instruct-128k
+    tokenizer_name: ibm-granite/granite-8b-code-instruct-128k
+    max_sequence_length: 8192
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-instruct-128k
+
+# Granite3-Code-Base-128K
+  - name: huggingface/granite-8b-code-base-128k
+    model_name: ibm-granite/granite-8b-code-base-128k
+    tokenizer_name: ibm-granite/granite-8b-code-base-128k
+    max_sequence_length: 8192
+    client_spec:
+        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
+        args:
+            pretrained_model_name_or_path: ibm-granite/granite-8b-code-base-128k
