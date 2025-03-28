@@ -18,7 +18,7 @@ models:
     access: open
     release_date: 2023-01-01
     tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
-
+    
   # Adobe
   - name: adobe/giga-gan
     display_name: GigaGAN (1B)
@@ -128,7 +128,7 @@ models:
 
   # AI Singapore
   - name: aisingapore/sea-lion-7b
-    display_name: SEA-LION (7B)
+    display_name: SEA-LION 7B
     description: SEA-LION is a collection of language models which has been pretrained and instruct-tuned on languages from the Southeast Asia region. It utilizes the MPT architecture and a custom SEABPETokenizer for tokenization.
     creator_organization_name: AI Singapore
     access: open
@@ -137,7 +137,7 @@ models:
     tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
 
   - name: aisingapore/sea-lion-7b-instruct
-    display_name: SEA-LION Instruct (7B)
+    display_name: SEA-LION 7B Instruct
     description: SEA-LION is a collection of language models which has been pretrained and instruct-tuned on languages from the Southeast Asia region. It utilizes the MPT architecture and a custom SEABPETokenizer for tokenization.
     creator_organization_name: AI Singapore
     access: open
@@ -146,21 +146,75 @@ models:
     tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: aisingapore/llama3-8b-cpt-sea-lionv2-base
-    display_name: Llama 3 CPT SEA-Lion v2 (8B)
-    description: Llama 3 CPT SEA-Lion v2 (8B) is a multilingual model which was continued pre-trained on 48B additional tokens, including tokens in Southeast Asian languages.
+    display_name: Llama3 8B CPT SEA-LIONv2
+    description: Llama3 8B CPT SEA-LIONv2 is a multilingual model which was continued pre-trained on 48B additional tokens, including tokens in Southeast Asian languages.
     creator_organization_name: AI Singapore
     access: open
-    num_parameters: 80300000000
+    num_parameters: 8030000000
     release_date: 2024-07-31
-    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
 
   - name: aisingapore/llama3-8b-cpt-sea-lionv2.1-instruct
-    display_name: Llama 3 CPT SEA-Lion v2.1 Instruct (8B)
-    description: Llama 3 CPT SEA-Lion v2.1 Instruct (8B) is a multilingual model which has been fine-tuned with around 100,000 English instruction-completion pairs alongside a smaller pool of around 50,000 instruction-completion pairs from other Southeast Asian languages, such as Indonesian, Thai and Vietnamese.
+    display_name: Llama3 8B CPT SEA-LIONv2.1 Instruct
+    description: Llama3 8B CPT SEA-LIONv2.1 Instruct is a multilingual model which has been fine-tuned with around 100,000 English instruction-completion pairs alongside a smaller pool of around 50,000 instruction-completion pairs from other Southeast Asian languages, such as Indonesian, Thai and Vietnamese.
     creator_organization_name: AI Singapore
     access: open
-    num_parameters: 80300000000
+    num_parameters: 8030000000
     release_date: 2024-08-21
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: aisingapore/gemma2-9b-cpt-sea-lionv3-base
+    display_name: Gemma2 9B CPT SEA-LIONv3
+    description: Gemma2 9B CPT SEA-LIONv3 Base is a multilingual model which has undergone continued pre-training on approximately 200B tokens across the 11 official Southeast Asian languages, such as English, Chinese, Vietnamese, Indonesian, Thai, Tamil, Filipino, Malay, Khmer, Lao, Burmese.
+    creator_organization_name: AI Singapore
+    access: open
+    num_parameters: 9240000000
+    release_date: 2024-10-30
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
+
+  - name: aisingapore/gemma2-9b-cpt-sea-lionv3-instruct
+    display_name: Gemma2 9B CPT SEA-LIONv3 Instruct
+    description: Gemma2 9B CPT SEA-LIONv3 Instruct is a multilingual model which has been fine-tuned with around 500,000 English instruction-completion pairs alongside a larger pool of around 1,000,000 instruction-completion pairs from other ASEAN languages, such as Indonesian, Thai and Vietnamese.
+    creator_organization_name: AI Singapore
+    access: open
+    num_parameters: 9240000000
+    release_date: 2024-10-30
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: aisingapore/llama3.1-8b-cpt-sea-lionv3-base
+    display_name: Llama3.1 8B CPT SEA-LIONv3
+    description: Llama3.1 8B CPT SEA-LIONv3 Base is a multilingual model which has undergone continued pre-training on approximately 200B tokens across 11 SEA languages, such as Burmese, Chinese, English, Filipino, Indonesia, Khmer, Lao, Malay, Tamil, Thai and Vietnamese.
+    creator_organization_name: AI Singapore
+    access: open
+    num_parameters: 9240000000
+    release_date: 2024-12-11
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
+
+  - name: aisingapore/llama3.1-8b-cpt-sea-lionv3-instruct
+    display_name: Llama3.1 8B CPT SEA-LIONv3 Instruct
+    description: Llama3.1 8B CPT SEA-LIONv3 Instruct is a multilingual model that has been fine-tuned in two stages on approximately 12.3M English instruction-completion pairs alongside a pool of 4.5M Southeast Asian instruction-completion pairs from SEA languages such as Indonesian, Javanese, Sundanese, Tamil, Thai and Vietnamese.
+    creator_organization_name: AI Singapore
+    access: open
+    num_parameters: 9240000000
+    release_date: 2024-12-11
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: aisingapore/llama3.1-70b-cpt-sea-lionv3-base
+    display_name: Llama3.1 70B CPT SEA-LIONv3
+    description: Llama3.1 70B CPT SEA-LIONv3 Base is a multilingual model which has undergone continued pre-training on approximately 200B tokens across 11 SEA languages, such as Burmese, Chinese, English, Filipino, Indonesia, Khmer, Lao, Malay, Tamil, Thai and Vietnamese.
+    creator_organization_name: AI Singapore
+    access: open
+    num_parameters: 70600000000
+    release_date: 2024-12-11
+    tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
+
+  - name: aisingapore/llama3.1-70b-cpt-sea-lionv3-instruct
+    display_name: Llama3.1 70B CPT SEA-LIONv3 Instruct
+    description: Llama3.1 70B CPT SEA-LIONv3 Instruct is a multilingual model that has been fine-tuned in two stages on approximately 12.3M English instruction-completion pairs alongside a pool of 4.5M Southeast Asian instruction-completion pairs from SEA languages such as Indonesian, Javanese, Sundanese, Tamil, Thai, and Vietnamese.
+    creator_organization_name: AI Singapore
+    access: open
+    num_parameters: 70600000000
+    release_date: 2024-12-11
     tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   # Aleph Alpha
@@ -443,6 +497,14 @@ models:
     creator_organization_name: Anthropic
     access: limited
     release_date: 2024-10-22
+    tags: [ANTHROPIC_CLAUDE_3_MODEL_TAG, TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: anthropic/claude-3-7-sonnet-20250219
+    display_name: Claude 3.7 Sonnet (20250219)
+    description: Claude 3.7 Sonnet is a Claude 3 family hybrid reasoning model that can produce near-instant responses or extended, step-by-step thinking that is made visible to the user ([blog](https://www.anthropic.com/news/claude-3-7-sonnet)).
+    creator_organization_name: Anthropic
+    access: limited
+    release_date: 2025-02-24
     tags: [ANTHROPIC_CLAUDE_3_MODEL_TAG, TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: anthropic/stanford-online-all-v4-s3
@@ -1082,6 +1144,14 @@ models:
     creator_organization_name: Google
     access: limited
     release_date: 2025-02-05
+    tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, AUDIO_LANGUAGE_MODEL_TAG, GOOGLE_GEMINI_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: google/gemini-2.0-flash-thinking-exp-01-21
+    display_name: Gemini 2.0 Flash Thinking (01-21 preview)
+    description: Gemini 2.0 Flash Thinking (01-21 preview) ([documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/thinking))
+    creator_organization_name: Google
+    access: limited
+    release_date: 2025-01-21
     tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, AUDIO_LANGUAGE_MODEL_TAG, GOOGLE_GEMINI_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: google/gemini-2.0-pro-exp-02-05
@@ -1751,6 +1821,15 @@ models:
     release_date: 2024-07-23
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
+  - name: meta/llama-3.2-1b-instruct
+    display_name: Llama 3.2 Instruct (1.23B)
+    description: The Meta Llama 3.2 collection of multilingual large language models (LLMs) is a collection of pretrained and instruction-tuned text-only generative models in 1B and 3B sizes. ([blog](https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/))
+    creator_organization_name: Meta
+    access: open
+    num_parameters: 1230000000
+    release_date: 2024-09-25
+    tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
   - name: meta/llama-3.2-3b-instruct-turbo
     display_name: Llama 3.2 Instruct Turbo (3B)
     description: The Meta Llama 3.2 collection of multilingual large language models (LLMs) is a collection of pretrained and instruction-tuned text-only generative models in 1B and 3B sizes. ([blog](https://ai.meta.com/blog/llama-3-2-connect-2024-vision-edge-mobile-devices/)) Turbo is Together's implementation, providing a near negligible difference in quality from the reference implementation with faster performance and lower cost, currently using FP8 quantization. ([blog](https://www.together.ai/blog/llama-31-quality))
@@ -1950,13 +2029,13 @@ models:
     num_parameters: 14000000000
     release_date: 2024-05-21
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
-
+  
   - name: microsoft/phi-3.5-mini-instruct
-    display_name: Phi-3.5 Mini
-    description: Phi-3.5 Mini is a lightweight, state-of-the-art open model built upon datasets used for Phi-3 - synthetic data and filtered publicly available documents - with a focus on very high-quality, reasoning dense data. ([paper](https://arxiv.org/abs/2404.14219), [blog](https://techcommunity.microsoft.com/blog/azure-ai-services-blog/discover-the-new-multi-lingual-high-quality-phi-3-5-slms/4225280))
+    display_name: Phi-3.5-mini-instruct (3.8B)
+    description: Phi-3.5-mini is a lightweight, state-of-the-art open model built upon datasets used for Phi-3 - synthetic data and filtered publicly available websites. ([paper](https://arxiv.org/abs/2404.14219), [blog](https://techcommunity.microsoft.com/blog/azure-ai-services-blog/discover-the-new-multi-lingual-high-quality-phi-3-5-slms/4225280))
     creator_organization_name: Microsoft
     access: open
-    num_parameters: 3820000000
+    num_parameters: 3800000000
     release_date: 2024-08-22
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
@@ -2107,6 +2186,15 @@ models:
     num_parameters: 7300000000
     release_date: 2024-05-22
     tags: [TEXT_MODEL_TAG, PARTIAL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+  
+  - name: mistralai/mistral-7b-instruct-v0.3-hf
+    display_name: Mistral Instruct v0.3 (7B)
+    description: Mistral v0.3 Instruct 7B is a 7.3B parameter transformer model that uses Grouped-Query Attention (GQA). Compared to v0.1, v0.2 has a 32k context window and no Sliding-Window Attention (SWA). ([blog post](https://mistral.ai/news/la-plateforme/))
+    creator_organization_name: Mistral AI
+    access: open
+    num_parameters: 7300000000
+    release_date: 2024-05-22
+    tags: [TEXT_MODEL_TAG, PARTIAL_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: mistralai/mixtral-8x7b-32kseqlen
     display_name: Mixtral (8x7B 32K seqlen)
@@ -2193,6 +2281,15 @@ models:
     access: open
     num_parameters: 23600000000
     release_date: 2025-01-30
+    tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: mistralai/mistral-small-2503
+    display_name: Mistral Small 3.1 (2503)
+    description: Mistral Small 3.1 (2503) is a model with improved text performance, multimodal understanding, and an expanded context window of up to 128k tokens. ([blog](https://mistral.ai/news/mistral-small-3-1))
+    creator_organization_name: Mistral AI
+    access: open
+    num_parameters: 23600000000
+    release_date: 2025-03-17
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: mistralai/mistral-medium-2312
@@ -2649,6 +2746,14 @@ models:
     release_date: 2024-07-18
     tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, OPENAI_CHATGPT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
+  - name: openai/whisper-1_gpt-4o-2024-11-20
+    display_name: Whisper-1 + GPT-4o (2024-11-20)
+    description: Transcribes the text with Whisper-1 and then uses GPT-4o to generate a response.
+    creator_organization_name: OpenAI
+    access: limited
+    release_date: 2024-11-20
+    tags: [AUDIO_LANGUAGE_MODEL_TAG, OPENAI_CHATGPT_MODEL_TAG]
+
   - name: openai/gpt-4o-audio-preview-2024-10-01
     display_name: GPT-4o Audio (Preview 2024-10-01)
     description: GPT-4o Audio (Preview 2024-10-01) is a preview model that allows using use audio inputs to prompt the model ([documentation](https://platform.openai.com/docs/guides/audio)).
@@ -2691,6 +2796,15 @@ models:
     access: limited
     release_date: 2023-11-06
     tags: [VISION_LANGUAGE_MODEL_TAG, OPENAI_CHATGPT_MODEL_TAG, FULL_FUNCTIONALITY_VLM_TAG]
+
+  ## GPT-4.5
+  - name: openai/gpt-4.5-preview-2025-02-27
+    display_name: GPT-4.5 (2025-02-27 preview)
+    description: GPT-4.5 (2025-02-27 preview) is a large multimodal model that is designed to be more general-purpose than OpenAI's STEM-focused reasoning models. It was trained using new supervision techniques combined with traditional methods like supervised fine-tuning (SFT) and reinforcement learning from human feedback (RLHF). ([blog](https://openai.com/index/introducing-gpt-4-5/), [system card](https://openai.com/index/gpt-4-5-system-card/))
+    creator_organization_name: OpenAI
+    access: limited
+    release_date: 2025-02-27
+    tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, OPENAI_CHATGPT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   ## o1 Models
   - name: openai/o1-2024-12-17
@@ -3009,6 +3123,14 @@ models:
     release_date: 2024-09-19
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
+  - name: qwen/qwen2.5-7b-instruct
+    display_name: Qwen2.5 Instruct (7B)
+    description: Qwen2.5 Instruct (7B) was trained on 18 trillion tokens and supports 29 languages, and shows improvements over Qwen2 in knowledge, coding, mathematics, instruction following, generating long texts, and processing structure data. ([blog](https://qwenlm.github.io/blog/qwen2.5/)) Turbo is Together's cost-efficient implementation, providing fast FP8 performance while maintaining quality, closely matching FP16 reference models. ([blog](https://www.together.ai/blog/together-inference-engine-2))
+    creator_organization_name: Qwen
+    access: open
+    release_date: 2024-09-19
+    tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
   - name: qwen/qwen2.5-72b-instruct-turbo
     display_name: Qwen2.5 Instruct Turbo (72B)
     description: Qwen2.5 Instruct Turbo (72B) was trained on 18 trillion tokens and supports 29 languages, and shows improvements over Qwen2 in knowledge, coding, mathematics, instruction following, generating long texts, and processing structure data. ([blog](https://qwenlm.github.io/blog/qwen2.5/)) Turbo is Together's cost-efficient implementation, providing fast FP8 performance while maintaining quality, closely matching FP16 reference models. ([blog](https://www.together.ai/blog/together-inference-engine-2))
@@ -3270,8 +3392,6 @@ models:
     num_parameters: 7000000000
     release_date: 2023-04-20
     tags: [TEXT_MODEL_TAG, FULL_FUNCTIONALITY_TEXT_MODEL_TAG]
-
-
 
   # Stanford
   - name: stanford/alpaca-7b
@@ -3574,6 +3694,14 @@ models:
     creator_organization_name: Writer
     access: open
     num_parameters: 70600000000
+    release_date: 2024-07-31
+    tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: writer/palmyra-fin
+    display_name: Palmyra Fin
+    description: Palmyra Fin is a financial LLM built using combining a well-curated set of financial training data with custom fine-tuning instruction data([blog](https://writer.com/blog/palmyra-med-fin-models/)).
+    creator_organization_name: Writer
+    access: limited
     release_date: 2024-07-31
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 

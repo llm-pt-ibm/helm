@@ -1,19 +1,20 @@
 # mypy: check_untyped_defs = False
 from dataclasses import replace
-from typing import Any, Dict, List, Optional, cast, Union
+from typing import Any, Dict, List, Optional, cast, Union, Callable
 
 from helm.benchmark.model_metadata_registry import is_vlm
 from helm.common import multimodal_request_utils
 from helm.common.cache import CacheConfig
-from helm.common.media_object import TEXT_TYPE
+from helm.common.media_object import TEXT_TYPE, MultimediaObject
 from helm.common.request import ErrorFlags, wrap_request_time, Request, RequestResult, GeneratedOutput, Token
 from helm.common.hierarchical_logger import hlog
+from helm.common.object_spec import get_class_by_name
 from helm.common.optional_dependencies import handle_module_not_found_error
 from helm.common.tokenization_request import (
     TokenizationRequest,
     TokenizationRequestResult,
 )
-from helm.clients.client import CachingClient, truncate_sequence, generate_uid_for_multimodal_prompt
+from helm.clients.client import Client, CachingClient, truncate_sequence, generate_uid_for_multimodal_prompt
 from helm.tokenizers.tokenizer import Tokenizer
 
 try:
@@ -58,6 +59,7 @@ class OpenAIClient(CachingClient):
         base_url: Optional[str] = None,
         reasoning_effort: Optional[str] = None,
         openai_model_name: Optional[str] = None,
+        output_processor: Optional[str] = None,
     ):
         super().__init__(cache_config=cache_config)
         self.tokenizer = tokenizer
@@ -65,6 +67,9 @@ class OpenAIClient(CachingClient):
         self.client = OpenAI(api_key=api_key, organization=org_id, base_url=base_url)
         self.reasoning_effort = reasoning_effort
         self.openai_model_name = openai_model_name
+        self.output_processor: Optional[Callable[[str], str]] = (
+            get_class_by_name(output_processor) if output_processor else None
+        )
 
     def _get_model_for_request(self, request: Request) -> str:
         return self.openai_model_name or request.model_engine
@@ -74,7 +79,9 @@ class OpenAIClient(CachingClient):
         if request.multimodal_prompt:
             prompt_key: str = generate_uid_for_multimodal_prompt(request.multimodal_prompt)
             cache_key = {**cache_key, "multimodal_prompt": prompt_key}
-            del cache_key["messages"]
+
+            if "messages" in cache_key:
+                del cache_key["messages"]
         return cache_key
 
     def _make_embedding_request(self, request: Request) -> RequestResult:
@@ -188,6 +195,30 @@ class OpenAIClient(CachingClient):
             "frequency_penalty": request.frequency_penalty,
         }
 
+        if request.response_format and request.response_format.json_schema:
+            # Copy and modify JSON schema to conform to OpenAI's requirements
+            json_schema = dict(request.response_format.json_schema)
+
+            # additionalProperties: false must always be set in objects
+            # https://platform.openai.com/docs/guides/structured-outputs#additionalproperties-false-must-always-be-set-in-objects
+            if "additionalProperties" not in json_schema:
+                json_schema["additionalProperties"] = False
+
+            # All fields must be required
+            # https://platform.openai.com/docs/guides/structured-outputs#all-fields-must-be-required
+            if "required" not in json_schema:
+                json_schema["required"] = list(json_schema["properties"].keys())
+
+            raw_request["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "response",
+                    "description": "",
+                    "schema": json_schema,
+                    "strict": True,
+                },
+            }
+
         # Special handling for o1 models.
         # Refer to the "Reasoning models" documentation further discussion of o1 model limitations:
         # https://platform.openai.com/docs/guides/reasoning
@@ -284,6 +315,7 @@ class OpenAIClient(CachingClient):
             # Handle Azure OpenAI content filter
             # See: https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/content-filter
             if raw_completion["finish_reason"] == "content_filter":
+                hlog(f"Content blocked by OpenAI filter: {str(raw_request)}")
                 return RequestResult(
                     success=False,
                     cached=False,
@@ -295,6 +327,8 @@ class OpenAIClient(CachingClient):
             # The OpenAI chat completion API doesn't support echo.
             # If `echo_prompt` is true, combine the prompt and completion.
             raw_completion_content = raw_completion["message"]["content"]
+            if self.output_processor:
+                raw_completion_content = self.output_processor(raw_completion_content)
             text: str = request.prompt + raw_completion_content if request.echo_prompt else raw_completion_content
             # The OpenAI chat completion API doesn't return us tokens or logprobs, so we tokenize ourselves.
             tokenization_result: TokenizationRequestResult = self.tokenizer.tokenize(
@@ -393,9 +427,40 @@ class OpenAIClient(CachingClient):
             embedding=[],
         )
 
+    def _make_transcription_request(self, request: Request) -> RequestResult:
+        assert (
+            request.multimodal_prompt is not None and request.multimodal_prompt.size == 1
+        ), "Expected just a single audio file."
+        media_object = request.multimodal_prompt.media_objects[0]
+        assert media_object.is_type("audio") and media_object.location, "Expected an audio file."
+        audio_path: str = media_object.location
+        model: str = self._get_model_for_request(request)
+
+        def do_it() -> Dict[str, Any]:
+            transcription = self.client.audio.transcriptions.create(model=model, file=open(audio_path, "rb"))
+            return {"transcription": transcription.text}
+
+        try:
+            cache_key = self._get_cache_key({"audio": audio_path, "model": model}, request)
+            response, cached = self.cache.get(cache_key, wrap_request_time(do_it))
+        except openai.OpenAIError as e:
+            error: str = f"OpenAI error: {e}"
+            return RequestResult(success=False, cached=False, error=error, completions=[], embedding=[])
+
+        return RequestResult(
+            success=True,
+            cached=cached,
+            request_time=response["request_time"],
+            request_datetime=response.get("request_datetime"),
+            completions=[GeneratedOutput(text=response["transcription"], logprob=0, tokens=[])],
+            embedding=[],
+        )
+
     def make_request(self, request: Request) -> RequestResult:
         if request.embedding:
             return self._make_embedding_request(request)
+        elif "whisper" in request.model_engine:
+            return self._make_transcription_request(request)
         else:
             return self._make_chat_request(request)
 
@@ -403,3 +468,74 @@ class OpenAIClient(CachingClient):
 class OpenAILegacyCompletionsClient(OpenAIClient):
     def make_request(self, request: Request) -> RequestResult:
         return self._make_completion_request(request)
+
+
+class OpenAITranscriptionThenCompletionClient(Client):
+    """
+    Wrapper around `OpenAIClient` that transcribes audio to text with a
+    speech-to-text model (e.g., Whisper) before making a completion request.
+    """
+
+    @staticmethod
+    def wrap_transcribed_indicator(transcription: str) -> str:
+        return f"\n[TRANSCRIBED AUDIO START]\n{transcription}\n[TRANSCRIBED AUDIO END]\n"
+
+    def __init__(
+        self,
+        tokenizer: Tokenizer,
+        tokenizer_name: str,
+        cache_config: CacheConfig,
+        api_key: Optional[str] = None,
+        org_id: Optional[str] = None,
+    ):
+        self._openai_client = OpenAIClient(
+            tokenizer=tokenizer,
+            tokenizer_name=tokenizer_name,
+            cache_config=cache_config,
+            api_key=api_key,
+            org_id=org_id,
+        )
+
+    def make_request(self, request: Request) -> RequestResult:
+        # Ensure that there is only one _ in the model engine name as the format is
+        # `transcription-model_completion-model`
+        assert request.model_engine.count("_") == 1, f"Invalid model name: {request.model_engine}"
+        # Use `model_engine` to determine both the models for transcription and completion
+        transcription_model, completion_model = request.model_engine.split("_")
+
+        # Only multimodal prompts are supported
+        assert request.multimodal_prompt is not None, "Expected a multimodal prompt"
+
+        # Gather all the text content and transcribe any audio to text
+        text_content: List[str] = []
+        for media_object in request.multimodal_prompt.media_objects:
+            if media_object.is_type("audio") and media_object.location:
+                request = Request(
+                    model=f"openai/{transcription_model}",
+                    multimodal_prompt=MultimediaObject(media_objects=[media_object]),
+                )
+                response = self._openai_client.make_request(request)
+
+                transcribed_text: str
+                if response.success and response.completions:
+                    transcribed_text = response.completions[0].text
+                else:
+                    transcribed_text = ""
+                    hlog(f"Failed to transcribe audio: {response.error}")
+
+                text_content.append(self.wrap_transcribed_indicator(transcribed_text))
+            elif media_object.is_type(TEXT_TYPE):
+                assert media_object.text is not None, "Expected text content"
+                text_content.append(media_object.text)
+            else:
+                raise ValueError(f"Unrecognized media type: {media_object.type}")
+
+        text_prompt: str = "\n".join(text_content)
+        hlog(f"Transcribed prompt:\n{text_prompt}")
+
+        # Now make the request to the completion model with just a text-only prompt and no audio
+        # Use the same decoding parameters as the original request
+        # Ensure to set multimodal_prompt to None so the request is treated as text-only.
+        return self._openai_client.make_request(
+            replace(request, prompt=text_prompt, model=f"openai/{completion_model}", multimodal_prompt=None)
+        )

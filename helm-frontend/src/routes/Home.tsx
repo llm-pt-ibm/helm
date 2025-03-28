@@ -8,13 +8,18 @@ import HEIMLanding from "@/components/Landing/HEIMLanding";
 import VHELMLanding from "@/components/VHELMLanding";
 import CallCenterLanding from "@/components/Landing/CallCenterLanding";
 import CLEVALanding from "@/components/Landing/CLEVALanding";
-import TablesLanding from "@/components/Landing/TablesLanding";
+import ToRRLanding from "@/components/Landing/ToRRLanding";
 import HomeLanding from "@/components/Landing/HomeLanding";
 import Image2StructLanding from "@/components/Landing/Image2StructLanding";
 import EWoKLanding from "@/components/Landing/EWoKLanding";
 import MedHELMLanding from "@/components/Landing/MedHELMLanding";
 import SafetyLanding from "@/components/Landing/SafetyLanding";
 import CapabilitiesLanding from "@/components/Landing/CapabilitiesLanding";
+import MMLUWinograndeAfrLanding from "@/components/Landing/MMLUWinograndeAfrLanding";
+import SEAHELMLanding from "@/components/Landing/SEAHELMLanding";
+import SpeechLanding from "@/components/Landing/SpeechLanding";
+import LongContextLanding from "@/components/Landing/LongContextLanding";
+import SQLLanding from "@/components/Landing/SQLLanding";
 
 export default function Home() {
   // TODO consider a more streamlined way to do this?
@@ -40,8 +45,8 @@ export default function Home() {
     return <CallCenterLanding />;
   } else if (window.PROJECT_ID === "cleva") {
     return <CLEVALanding />;
-  } else if (window.PROJECT_ID === "tables") {
-    return <TablesLanding />;
+  } else if (window.PROJECT_ID === "torr") {
+    return <ToRRLanding />;
   } else if (window.PROJECT_ID === "ewok") {
     return <EWoKLanding />;
   } else if (window.PROJECT_ID === "medhelm") {
@@ -50,6 +55,16 @@ export default function Home() {
     return <SafetyLanding />;
   } else if (window.PROJECT_ID === "capabilities") {
     return <CapabilitiesLanding />;
+  } else if (window.PROJECT_ID === "mmlu-winogrande-afr") {
+    return <MMLUWinograndeAfrLanding />;
+  } else if (window.PROJECT_ID === "seahelm") {
+    return <SEAHELMLanding />;
+  } else if (window.PROJECT_ID === "speech") {
+    return <SpeechLanding />;
+  } else if (window.PROJECT_ID === "sql") {
+    return <SQLLanding />;
+  } else if (window.PROJECT_ID === "long-context") {
+    return <LongContextLanding />;
   } else if (window.PROJECT_ID === "home") {
     return <HomeLanding />;
   } else {
