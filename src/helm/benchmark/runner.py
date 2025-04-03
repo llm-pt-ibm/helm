@@ -312,6 +312,29 @@ class Runner:
                     )
                     stats.extend(metric_result.aggregated_stats)
                     per_instance_stats.extend(metric_result.per_instance_stats)
+        
+        # Call contamination evaluator
+        if run_spec.contamination_evaluation_spec is not None:
+            with htrack_block("contamination evaluation"):
+                hlog(f"Running contamination evaluation using method: {run_spec.contamination_evaluation_spec.method}")
+                
+                # Create contamination evaluator
+                contamination_evaluator = ContaminationEvaluator()
+                
+                # Evaluate contamination
+                contamination_result = contamination_evaluator.evaluate(
+                    method=run_spec.contamination_evaluation_spec.method,
+                    model_path=run_spec.adapter_spec.model,  
+                    benchmark_path=input_instances_output_path,  
+                    scenario_state=scenario_state,
+                    metric_service=self.metric_service,
+                    eval_cache_path=self.eval_cache_path,
+                    parallelism=self.executor.execution_spec.parallelism,
+                )
+                
+                # Add contamination stats to overall stats
+                stats.extend(contamination_result.aggregated_stats)
+                per_instance_stats.extend(contamination_result.per_instance_stats)
 
         # Check that there aren't duplicate `Stat`s
         # Note: doesn't catch near misses.

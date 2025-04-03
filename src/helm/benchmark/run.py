@@ -266,6 +266,12 @@ def main():
         default=None,
         help="Full class name of the Runner class to use. If unset, uses the default Runner.",
     )
+    parser.add_argument(
+        "--contamination-check",
+        action="store_true",
+        help="Enables contamination assessment within the benchmark evaluation.",
+    )
+
     add_run_args(parser)
     args = parser.parse_args()
     validate_args(args)
