@@ -85,9 +85,10 @@ def run_benchmarking(
     cache_instances_only: bool,
     skip_completed_runs: bool,
     exit_on_error: bool,
+    contamination_strategy: Optional[str],
     runner_class_name: Optional[str],
     mongo_uri: Optional[str] = None,
-    disable_cache: Optional[bool] = None,
+    disable_cache: Optional[bool] = None
 ) -> List[RunSpec]:
     """Runs RunSpecs given a list of RunSpec descriptions."""
     sqlite_cache_backend_config: Optional[SqliteCacheBackendConfig] = None
@@ -123,6 +124,7 @@ def run_benchmarking(
         cache_instances_only,
         skip_completed_runs,
         exit_on_error,
+        contamination_strategy
     )
     runner.run_all(run_specs)
     return run_specs
@@ -272,6 +274,13 @@ def main():
         help="Enables contamination assessment within the benchmark evaluation.",
     )
 
+    parser.add_argument(
+        "--contamination-strategy",
+        type=str,
+        default=None,
+        help="Defines the contamination strategy to be used",
+    )
+
     add_run_args(parser)
     args = parser.parse_args()
     validate_args(args)
@@ -357,6 +366,7 @@ def main():
         runner_class_name=args.runner_class_name,
         mongo_uri=args.mongo_uri,
         disable_cache=args.disable_cache,
+        contamination_strategy=args.contamination_strategy
     )
 
     if args.run_specs:

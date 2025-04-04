@@ -1,15 +1,14 @@
 import os
 import numpy as np
+import spacy
 from tqdm import tqdm
 from rouge_score import rouge_scorer
 from nltk.tokenize import word_tokenize
-from nltk.tag import StanfordPOSTagger
-from functools import partial
-from datasets import Dataset 
+
 from concurrent.futures import ThreadPoolExecutor
 
-from helm.benchmark.metrics.metric_result import MetricResult
-from helm.benchmark.metrics.metric import Stat, PerInstanceStats
+
+from helm.benchmark.metrics.metric import MetricResult, Stat, PerInstanceStats
 from helm.benchmark.metrics.metric_name import MetricName
 from helm.common.hierarchical_logger import hlog, htrack_block
 
@@ -25,6 +24,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         
     def evaluate(
         self,
+        ex,
         model_path: str,
         benchmark_path: str,
         scenario_state,
@@ -62,7 +62,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 data_points = [data_points[x] for x in p[:n_eval_data_points]]
             
             # Initialize tagger
-            tagger = self._get_stanford_tagger()
+            tagger = self._get_spacy_tagger()
             
             # Process data points
             results = []
@@ -76,7 +76,8 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                             eval_data_name,
                             tagger,
                             model_path,
-                            scenario_state
+                            scenario_state,
+                            ex
                         )
                     )
                 
@@ -122,16 +123,10 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             
             return MetricResult(aggregated_stats=stats, per_instance_stats=per_instance_stats)
     
-    def _get_stanford_tagger(self):
-        """Get or initialize the Stanford POS tagger."""
-        if not("CLASSPATH" in os.environ and "STANFORD_MODELS" in os.environ):
-            hlog("Setting up Stanford's Part-of-Speech tagger for contamination detection.")
-            # Default paths or prompt for user input if needed
-            os.environ["CLASSPATH"] = "/path/to/stanford-postagger.jar"
-            os.environ["STANFORD_MODELS"] = "/path/to/models"
-        
-        st = StanfordPOSTagger('english-bidirectional-distsim.tagger')
-        return st
+    def _get_spacy_tagger(self):
+        """Initialize and return a spaCy language model for POS tagging."""
+        return spacy.load("en_core_web_sm")
+
     
     def _filter_data(self, eval_data, eval_data_name):
         """Filter data points based on criteria from the original implementation."""
@@ -180,35 +175,38 @@ class TSGuessingQuestionBasedContaminationEvaluator:
     
     def _build_prompt(self, example, tagger, eval_data_name, type_hint=False, category_hint=False, url_hint=False):
         """Build a prompt with a masked word for testing."""
-        text = example["text"]
-        tags = tagger.tag(text.split())
-        words = [x for x in tags if x[1] in ['NN', 'JJ', 'VB']]
+        text = example["input"].text
+        doc = tagger(text)
+
+        # Seleciona palavras com POS relevantes
+        words = [token for token in doc if token.pos_ in ['NOUN', 'ADJ', 'VERB']]
         if len(words) == 0:
             return "failed", ""
         
         idx = np.random.randint(len(words))
-        word = words[idx][0]
-        for i in range(len(text)-len(word)+1):
-            if text[i:(i+len(word))] == word:
-                text = text[:i] + "[MASK]" + text[(i+len(word)):]
-                break
+        word = words[idx].text
 
-        prompt = "Complete the sentence in one word:"
+        # Substitui a primeira ocorrência da palavra por [MASK]
+        if word in text:
+            text = text.replace(word, "[MASK]", 1)
+
+        prompt = "Complete a frase em uma palavra:"
         prompt += f"\n\n{text}"
-        
+
         # Add hints if specified
         if type_hint and eval_data_name == "truthful_qa" and "type" in example:
-            prompt += f"\nHint: {example['type']}"
+            prompt += f"\ndica: {example['type']}"
         if category_hint and eval_data_name == "truthful_qa" and "category" in example:
-            prompt += f"\nHint: {example['category']}"
+            prompt += f"\ndica: {example['category']}"
         if url_hint and eval_data_name == "truthful_qa" and "source" in example:
-            prompt += f"\nHint: {example['source']}"
+            prompt += f"\ndica: {example['source']}"
             
-        prompt += "\nReply the answer only."
+        prompt += "\nResponda apenas a resposta."
         
         return prompt, word
+
     
-    def _process_data_point(self, data_point, eval_data_name, tagger, model_path, scenario_state):
+    def _process_data_point(self, data_point, eval_data_name, tagger, model_path, scenario_state, executor):
         """Process a single data point for contamination evaluation."""
         # Build the prompt with masked word
         prompt, masked_word = self._build_prompt(data_point, tagger, eval_data_name)
@@ -218,13 +216,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             data_point["response"] = "failed"
             return data_point
         
-        # This would need to be adapted to use HELM's executor/interface
-        # For this example, we'll simulate a response
-        # In practice, you would use the appropriate HELM interface to query the model
-        
-        # Simulate querying the model (this should be replaced with actual model query)
-        # You might use scenario_state.adapter_spec to get model details
-        response = self._query_model(prompt, model_path, scenario_state)
+        response = self._query_model(prompt, model_path, scenario_state, executor)
         
         # Process the response
         processed_response = word_tokenize(response)[0] if response else ""
@@ -232,14 +224,17 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         # Update data point with results
         data_point["masked_word"] = masked_word
         data_point["response"] = processed_response
+
+        #print("PALAVRA OCULTA: ", data_point["masked_word"], "\nRESPOSTA: ", data_point["response"])
         
         return data_point
     
-    def _query_model(self, prompt, model_path, scenario_state):
-        """Query the model using HELM interfaces."""
-        # This is a placeholder for the actual implementation
-        # You would need to use the appropriate HELM interfaces to query the model
-        # This might involve using ExecutorService or similar HELM components
-        
-        # For now, return a simulated response
+    def _query_model(self, prompt, model_path, scenario_state, executor):
+        scenario_state.prompt = prompt
+        # Execute (fill up results)
+        response = executor.execute(scenario_state)
+        print(response.result.completions[0].text)
+        # Annotate (post-process the results)
+        #scenario_state = executor.execute(scenario_state)
+
         return "simulated word response"

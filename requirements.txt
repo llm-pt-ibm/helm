@@ -323,3 +323,6 @@ xxhash==3.5.0
 yarl==1.18.3
 zipp==3.21.0
 zstandard==0.18.0
+evaluate==0.4.1
+sentence-transformers==3.0.1
+vllm==0.3.3

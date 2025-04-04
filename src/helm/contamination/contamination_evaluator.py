@@ -1,3 +1,7 @@
+from helm.benchmark.metrics.metric import MetricResult
+from helm.contamination.ts_guessing_question_based import TSGuessingQuestionBasedContaminationEvaluator
+
+
 class ContaminationEvaluator:
     """
     Class responsible for evaluating contamination using different strategies
@@ -5,7 +9,8 @@ class ContaminationEvaluator:
     """
     
     def evaluate(
-        self, 
+        self,
+        executor,
         method: str,
         model_path: str,
         benchmark_path: str,
@@ -30,9 +35,7 @@ class ContaminationEvaluator:
             MetricResult containing contamination evaluation statistics.
         """
         # Select the appropriate evaluator based on the method
-        if method == "ts_guessing_question_multichoice":
-            evaluator = TSGuessingQuestionMultichoiceContaminationEvaluator()
-        elif method == "ts_guessing_question_base":
+        if method == "ts_guessing_question_base":
             evaluator = TSGuessingQuestionBasedContaminationEvaluator()
         # Add more evaluators as needed
         else:
@@ -40,6 +43,7 @@ class ContaminationEvaluator:
         
         # Run the selected evaluator
         return evaluator.evaluate(
+            ex=executor,
             model_path=model_path,
             benchmark_path=benchmark_path,
             scenario_state=scenario_state,

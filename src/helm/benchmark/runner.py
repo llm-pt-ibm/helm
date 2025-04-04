@@ -36,6 +36,7 @@ from helm.benchmark.metrics.metric_name import MetricName
 from helm.benchmark.metrics.metric_service import MetricService
 from helm.benchmark.metrics.metric import MetricInterface, MetricResult, PerInstanceStats, create_metric, Stat
 from helm.benchmark.window_services.tokenizer_service import TokenizerService
+from helm.contamination.contamination_evaluator import ContaminationEvaluator
 
 
 LATEST_SYMLINK: str = "latest"
@@ -152,7 +153,9 @@ class Runner:
         cache_instances_only: bool,
         skip_completed_runs: bool,
         exit_on_error: bool,
+        contamination_strategy: str
     ):
+        self.contamination_strategy = contamination_strategy
         self.executor = Executor(execution_spec)
         self.annotator_executor = AnnotationExecutor(
             AnnotationExecutionSpec(
@@ -287,85 +290,78 @@ class Runner:
             annotator_specs=run_spec.annotators,
         )
 
-        # Execute (fill up results)
-        scenario_state = self.executor.execute(scenario_state)
+        if self.contamination_strategy is not None:
+            contamination_evaluator = ContaminationEvaluator()
+            
+            result = contamination_evaluator.evaluate(
+                executor = self.executor,
+                method=self.contamination_strategy,
+                model_path=run_spec.adapter_spec.model,  
+                benchmark_path=input_instances_output_path,  
+                scenario_state=scenario_state,
+                metric_service=self.metric_service,
+                eval_cache_path=self.eval_cache_path,
+                parallelism=self.executor.execution_spec.parallelism,
+            )
 
-        # Annotate (post-process the results)
-        scenario_state = self.annotator_executor.execute(scenario_state)
+            want_to_continue = input("the contamination result was:", result, ". Do you want to continue with the evaluation? (Yes/No)")
+            if want_to_continue == "Yes":
+                
+                # Execute (fill up results)
+                scenario_state = self.executor.execute(scenario_state)
 
-        # Apply the metrics
-        # When performing a dry run, only estimate the number of tokens instead
-        # of calculating the metrics.
-        metrics: List[MetricInterface] = (
-            [DryRunMetric()] if self.dry_run else [create_metric(metric_spec) for metric_spec in run_spec.metric_specs]
-        )
-        stats: List[Stat] = []
-        per_instance_stats: List[PerInstanceStats] = []
-        with htrack_block(f"{len(metrics)} metrics"):
-            for metric in metrics:
-                with htrack_block(metric):
-                    metric_result: MetricResult = metric.evaluate(
-                        scenario_state,
-                        self.metric_service,
-                        self.eval_cache_path,
-                        self.executor.execution_spec.parallelism,
-                    )
-                    stats.extend(metric_result.aggregated_stats)
-                    per_instance_stats.extend(metric_result.per_instance_stats)
-        
-        # Call contamination evaluator
-        if run_spec.contamination_evaluation_spec is not None:
-            with htrack_block("contamination evaluation"):
-                hlog(f"Running contamination evaluation using method: {run_spec.contamination_evaluation_spec.method}")
-                
-                # Create contamination evaluator
-                contamination_evaluator = ContaminationEvaluator()
-                
-                # Evaluate contamination
-                contamination_result = contamination_evaluator.evaluate(
-                    method=run_spec.contamination_evaluation_spec.method,
-                    model_path=run_spec.adapter_spec.model,  
-                    benchmark_path=input_instances_output_path,  
-                    scenario_state=scenario_state,
-                    metric_service=self.metric_service,
-                    eval_cache_path=self.eval_cache_path,
-                    parallelism=self.executor.execution_spec.parallelism,
+                # Annotate (post-process the results)
+                scenario_state = self.annotator_executor.execute(scenario_state)
+                # Apply the metrics
+                # When performing a dry run, only estimate the number of tokens instead
+                # of calculating the metrics.
+                metrics: List[MetricInterface] = (
+                    [DryRunMetric()] if self.dry_run else [create_metric(metric_spec) for metric_spec in run_spec.metric_specs]
                 )
+                stats: List[Stat] = []
+                per_instance_stats: List[PerInstanceStats] = []
+                with htrack_block(f"{len(metrics)} metrics"):
+                    for metric in metrics:
+                        with htrack_block(metric):
+                            metric_result: MetricResult = metric.evaluate(
+                                scenario_state,
+                                self.metric_service,
+                                self.eval_cache_path,
+                                self.executor.execution_spec.parallelism,
+                            )
+                            stats.extend(metric_result.aggregated_stats)
+                            per_instance_stats.extend(metric_result.per_instance_stats)
                 
-                # Add contamination stats to overall stats
-                stats.extend(contamination_result.aggregated_stats)
-                per_instance_stats.extend(contamination_result.per_instance_stats)
+                # Check that there aren't duplicate `Stat`s
+                # Note: doesn't catch near misses.
+                metric_counts: typing.Counter[MetricName] = Counter([stat.name for stat in stats])
+                for metric_name, count in metric_counts.items():
+                    if count > 1:
+                        hlog(f"WARNING: duplicate metric name {metric_name}")
 
-        # Check that there aren't duplicate `Stat`s
-        # Note: doesn't catch near misses.
-        metric_counts: typing.Counter[MetricName] = Counter([stat.name for stat in stats])
-        for metric_name, count in metric_counts.items():
-            if count > 1:
-                hlog(f"WARNING: duplicate metric name {metric_name}")
+                # Print out the number of stats
+                hlog(f"Generated {len(stats)} stats.")
 
-        # Print out the number of stats
-        hlog(f"Generated {len(stats)} stats.")
+                if self.skip_instances:
+                    hlog("skip_instances was True. Skipping writing results out.")
+                    return
 
-        if self.skip_instances:
-            hlog("skip_instances was True. Skipping writing results out.")
-            return
+                # Output benchmarking information and results to files
+                write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
 
-        # Output benchmarking information and results to files
-        write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
+                # Write out scenario
+                write(os.path.join(run_path, "scenario.json"), json.dumps(asdict_without_nones(scenario), indent=2))
 
-        # Write out scenario
-        write(os.path.join(run_path, "scenario.json"), json.dumps(asdict_without_nones(scenario), indent=2))
+                # Write scenario state
+                write(os.path.join(run_path, "scenario_state.json"), json.dumps(asdict_without_nones(scenario_state), indent=2))
 
-        # Write scenario state
-        write(os.path.join(run_path, "scenario_state.json"), json.dumps(asdict_without_nones(scenario_state), indent=2))
+                write(
+                    os.path.join(run_path, "stats.json"),
+                    json.dumps([asdict_without_nones(stat) for stat in remove_stats_nans(stats)], indent=2),
+                )
+                write(
+                    os.path.join(run_path, "per_instance_stats.json"),
+                    json.dumps(list(map(asdict_without_nones, remove_per_instance_stats_nans(per_instance_stats))), indent=2),
+                )
 
-        write(
-            os.path.join(run_path, "stats.json"),
-            json.dumps([asdict_without_nones(stat) for stat in remove_stats_nans(stats)], indent=2),
-        )
-        write(
-            os.path.join(run_path, "per_instance_stats.json"),
-            json.dumps(list(map(asdict_without_nones, remove_per_instance_stats_nans(per_instance_stats))), indent=2),
-        )
-
-        cache_stats.print_status()
+                cache_stats.print_status()
