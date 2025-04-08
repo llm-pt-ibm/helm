@@ -4,9 +4,7 @@ import spacy
 from tqdm import tqdm
 from rouge_score import rouge_scorer
 from nltk.tokenize import word_tokenize
-
-from concurrent.futures import ThreadPoolExecutor
-
+from dataclasses import replace
 
 from helm.benchmark.metrics.metric import MetricResult, Stat, PerInstanceStats
 from helm.benchmark.metrics.metric_name import MetricName
@@ -15,11 +13,10 @@ from helm.common.hierarchical_logger import hlog, htrack_block
 class TSGuessingQuestionBasedContaminationEvaluator:
     """
     Implementation of question-based guessing test for contamination detection.
-    Adapted from the ts_guessing_question_based method.
+    Modified to update all prompts before a single model query.
     """
     
     def __init__(self):
-        # Initialize any required resources
         pass
         
     def evaluate(
@@ -34,99 +31,90 @@ class TSGuessingQuestionBasedContaminationEvaluator:
     ) -> MetricResult:
         """
         Evaluate contamination using the TS guessing question-based approach.
-        
-        Args:
-            model_path: Path to the model.
-            benchmark_path: Path to the benchmark data.
-            scenario_state: The current scenario state.
-            metric_service: Service for computing metrics.
-            eval_cache_path: Path for caching evaluation results.
-            parallelism: Number of parallel workers.
-            
-        Returns:
-            MetricResult containing contamination evaluation statistics.
         """
         with htrack_block("ts_guessing_question_based contamination evaluation"):
+
             # Get instances from scenario state
             instances = [rs.instance for rs in scenario_state.request_states]
             eval_data_name = os.path.basename(benchmark_path).split(':')[0]
-            
+
+            # Initialize tagger
+            tagger = self._get_spacy_tagger()
+
             # Filter and prepare data
             data_points = self._filter_data(instances, eval_data_name)
             hlog(f"Left with {len(data_points)} data points after filtering")
-            
+
             # Subsample if needed
             n_eval_data_points = min(100, len(data_points))
             if n_eval_data_points > 0:
                 p = np.random.permutation(len(data_points))
-                data_points = [data_points[x] for x in p[:n_eval_data_points]]
+                data_points = [data_points[p[i]] for i in range(n_eval_data_points)]
+
+            # Modify prompt and update directly in scenario_state
+            masked_words = []
+
+            for i, request_state in enumerate(scenario_state.request_states):
+                if i < len(data_points):
+                    data_point = data_points[i]
+                    prompt, masked_word = self._build_prompt(data_point, tagger, eval_data_name)
+
+                    if prompt != "failed":
+                        # Cria novo input com o texto modificado
+                        novo_input = replace(request_state.instance.input, text=prompt)
+                        # Cria nova instância com o input atualizado
+                        novo_instance = replace(request_state.instance, input=novo_input)
+                        # Cria novo request com o prompt atualizado
+                        novo_request = replace(request_state.request, prompt="What is the word that is masked [MASK]?")
+                        # Cria novo request_state com as alterações
+                        novo_request_state = replace(request_state, instance=novo_instance, request=novo_request)
+                        # Atualiza o cenário com o novo estado
+                        scenario_state.request_states[i] = novo_request_state
+                        masked_words.append(masked_word)
+                    else:
+                        masked_words.append("")
+                else:
+                    masked_words.append("")
             
-            # Initialize tagger
-            tagger = self._get_spacy_tagger()
+            for i, request_state in enumerate(scenario_state.request_states):
+                print("INSTANCIA: ", request_state.instance.input)
+                print("PROMPT: ", request_state.request.prompt)
+                break
+
+            # Agora scenario_state.request_states está atualizado corretamente
+            response_scenario_state = self._query_model(None, model_path, scenario_state, ex)
             
-            # Process data points
+            # Process results
             results = []
-            with ThreadPoolExecutor(max_workers=parallelism) as executor:
-                futures = []
-                for data_point in data_points:
-                    futures.append(
-                        executor.submit(
-                            self._process_data_point,
-                            data_point,
-                            eval_data_name,
-                            tagger,
-                            model_path,
-                            scenario_state,
-                            ex
-                        )
-                    )
-                
-                for future in tqdm(futures, desc="Processing data points"):
-                    result = future.result()
-                    if result["response"] != "failed":
-                        results.append(result)
+            for i, rs in enumerate(response_scenario_state.request_states):
+                if i < len(masked_words) and masked_words[i] != "":
+                    if hasattr(rs, 'result') and hasattr(rs.result, 'completions'):
+                        response_text = rs.result.completions[0].text.strip()
+                        results.append({
+                            "id": f"instance_{i}",
+                            "masked_word": masked_words[i].lower(),
+                            "response": response_text.lower()
+                        })
             
+            print(results)
             # Calculate metrics
-            masked_words = [x["masked_word"].lower() for x in results]
-            responses = [x["response"].lower() for x in results]
-            exact_match = len([i for i in range(len(responses)) 
-                             if responses[i] == masked_words[i]]) / max(len(responses), 1)
+            if results:
+                masked_words = [x["masked_word"] for x in results]
+                responses = [x["response"] for x in results]
+                exact_match = sum(1 for i in range(len(responses)) 
+                               if responses[i] == masked_words[i]) / len(responses)
+            else:
+                exact_match = 0.0
             
             hlog(f"Question-based completion contamination evaluation")
             hlog(f"Exact Match (EM): {exact_match:.2f}")
             
-            # Create stats
-            stats = [
-                Stat(
-                    name=MetricName("contamination_ts_guessing_exact_match"),
-                    value=exact_match,
-                    higher_is_better=False,  # Lower exact match implies less contamination
-                    description="Exact match rate in masked word prediction (lower implies less contamination)"
-                )
-            ]
             
-            # Create per-instance stats if needed
-            per_instance_stats = [
-                PerInstanceStats(
-                    instance_id=results[i].get("id", f"instance_{i}"),
-                    stats=[
-                        Stat(
-                            name=MetricName("contamination_ts_guessing_match"),
-                            value=1.0 if responses[i] == masked_words[i] else 0.0,
-                            higher_is_better=False,
-                            description="Binary indicator of exact match (1=match, 0=no match)"
-                        )
-                    ]
-                )
-                for i in range(len(results))
-            ]
-            
-            return MetricResult(aggregated_stats=stats, per_instance_stats=per_instance_stats)
+            return exact_match
     
     def _get_spacy_tagger(self):
         """Initialize and return a spaCy language model for POS tagging."""
         return spacy.load("en_core_web_sm")
-
     
     def _filter_data(self, eval_data, eval_data_name):
         """Filter data points based on criteria from the original implementation."""
@@ -152,15 +140,12 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 x_dict = self._instance_to_dict(x)
                 
                 # Process based on non-truthful_qa data
-                # Implementation would need to be adapted for HELM's data structures
                 data_points.append(x_dict)
                 
         return data_points
     
     def _instance_to_dict(self, instance):
         """Convert a HELM instance to a dictionary format compatible with this evaluator."""
-        # This implementation would depend on HELM's exact data structures
-        # Here's a simplified version
         if hasattr(instance, '__dict__'):
             result = instance.__dict__.copy()
         else:
@@ -189,6 +174,8 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         # Substitui a primeira ocorrência da palavra por [MASK]
         if word in text:
             text = text.replace(word, "[MASK]", 1)
+        else:
+            return "failed", ""
 
         prompt = "Complete a frase em uma palavra:"
         prompt += f"\n\n{text}"
@@ -204,37 +191,9 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         prompt += "\nResponda apenas a resposta."
         
         return prompt, word
-
-    
-    def _process_data_point(self, data_point, eval_data_name, tagger, model_path, scenario_state, executor):
-        """Process a single data point for contamination evaluation."""
-        # Build the prompt with masked word
-        prompt, masked_word = self._build_prompt(data_point, tagger, eval_data_name)
-        
-        if prompt == "failed":
-            data_point["masked_word"] = ""
-            data_point["response"] = "failed"
-            return data_point
-        
-        response = self._query_model(prompt, model_path, scenario_state, executor)
-        
-        # Process the response
-        processed_response = word_tokenize(response)[0] if response else ""
-        
-        # Update data point with results
-        data_point["masked_word"] = masked_word
-        data_point["response"] = processed_response
-
-        #print("PALAVRA OCULTA: ", data_point["masked_word"], "\nRESPOSTA: ", data_point["response"])
-        
-        return data_point
     
     def _query_model(self, prompt, model_path, scenario_state, executor):
-        scenario_state.prompt = prompt
-        # Execute (fill up results)
-        response = executor.execute(scenario_state)
-        print(response.result.completions[0].text)
-        # Annotate (post-process the results)
-        #scenario_state = executor.execute(scenario_state)
-
-        return "simulated word response"
+        """Query the model with the modified scenario state."""
+        # Execute the scenario state with modified prompts
+        response_scenario_state = executor.execute(scenario_state)
+        return response_scenario_state

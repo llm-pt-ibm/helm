@@ -304,7 +304,8 @@ class Runner:
                 parallelism=self.executor.execution_spec.parallelism,
             )
 
-            want_to_continue = input("the contamination result was:", result, ". Do you want to continue with the evaluation? (Yes/No)")
+            print("the contamination result was:!", result, ". Do you want to continue with the evaluation? (Yes/No)")
+            want_to_continue = input()
             if want_to_continue == "Yes":
                 
                 # Execute (fill up results)
