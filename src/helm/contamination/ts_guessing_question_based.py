@@ -74,12 +74,6 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 else:
                     masked_words.append("")
 
-            
-            for i, request_state in enumerate(scenario_state.request_states):
-                print("INSTANCIA: ", request_state.instance.input)
-                print("PROMPT: ", request_state.request.prompt)
-                break
-
             response_scenario_state = self._query_model(scenario_state, ex)
 
             # Process results
@@ -174,18 +168,9 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         else:
             return "failed", ""
 
-        prompt = "Complete a frase em uma palavra:"
-        prompt += f"\n\n{text}"
-
-        # Add hints if specified
-        if type_hint and eval_data_name == "truthful_qa" and "type" in example:
-            prompt += f"\ndica: {example['type']}"
-        if category_hint and eval_data_name == "truthful_qa" and "category" in example:
-            prompt += f"\ndica: {example['category']}"
-        if url_hint and eval_data_name == "truthful_qa" and "source" in example:
-            prompt += f"\ndica: {example['source']}"
-            
-        prompt += "\nResponda apenas a resposta."
+        prompt = "Preencha o espaço marcado com [MASK] na frase abaixo com uma única palavra que faça sentido no contexto:"
+        prompt += f"\n\n\"{text}\""
+        prompt += "\n\nResposta: "
         
         return prompt, word
     

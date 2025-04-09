@@ -302,7 +302,7 @@ class Runner:
 
             print("the contamination result was:!", result, ". Do you want to continue with the evaluation? (Yes/No)")
             want_to_continue = input()
-            if want_to_continue == "Yes":
+            if want_to_continue == "yes":
                 
                 # Execute (fill up results)
                 scenario_state = self.executor.execute(scenario_state)
