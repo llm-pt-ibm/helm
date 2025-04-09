@@ -22,12 +22,8 @@ class TSGuessingQuestionBasedContaminationEvaluator:
     def evaluate(
         self,
         ex,
-        model_path: str,
         benchmark_path: str,
         scenario_state,
-        metric_service,
-        eval_cache_path: str,
-        parallelism: int
     ) -> MetricResult:
         """
         Evaluate contamination using the TS guessing question-based approach.
@@ -60,35 +56,32 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                     prompt, masked_word = self._build_prompt(data_point, tagger, eval_data_name)
 
                     if prompt != "failed":
-                        # Cria novo input com o texto modificado
-                        novo_input = replace(request_state.instance.input, text=prompt)
-                        # Cria nova instância com o input atualizado
-                        novo_instance = replace(request_state.instance, input=novo_input)
-                        # Cria novo request com o prompt atualizado
-                        novo_request = replace(
+                        new_input = replace(request_state.instance.input, text=prompt)
+                        new_instance = replace(request_state.instance, input=new_input)
+                        new_request = replace(
                             request_state.request,
-                            prompt="What is the word that is masked [MASK]?",
-                            max_tokens=15
+                            prompt=prompt,
+                            max_tokens=10,
+                            temperature=0.0 
                         )
 
-                        # Cria novo request_state com as alterações
-                        novo_request_state = replace(request_state, instance=novo_instance, request=novo_request)
-                        # Atualiza o cenário com o novo estado
+                        # Creates new request_state with the changes
+                        novo_request_state = replace(request_state, instance=new_instance, request=new_request)
                         scenario_state.request_states[i] = novo_request_state
                         masked_words.append(masked_word)
                     else:
                         masked_words.append("")
                 else:
                     masked_words.append("")
+
             
             for i, request_state in enumerate(scenario_state.request_states):
                 print("INSTANCIA: ", request_state.instance.input)
                 print("PROMPT: ", request_state.request.prompt)
                 break
 
-            # Agora scenario_state.request_states está atualizado corretamente
             response_scenario_state = self._query_model(scenario_state, ex)
-            
+
             # Process results
             results = []
             for i, rs in enumerate(response_scenario_state.request_states):
@@ -168,7 +161,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         text = example["input"].text
         doc = tagger(text)
 
-        # Seleciona palavras com POS relevantes
+        # Select words with relevant POS
         words = [token for token in doc if token.pos_ in ['NOUN', 'ADJ', 'VERB']]
         if len(words) == 0:
             return "failed", ""
@@ -176,7 +169,6 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         idx = np.random.randint(len(words))
         word = words[idx].text
 
-        # Substitui a primeira ocorrência da palavra por [MASK]
         if word in text:
             text = text.replace(word, "[MASK]", 1)
         else:

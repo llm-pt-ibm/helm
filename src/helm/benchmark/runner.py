@@ -295,13 +295,9 @@ class Runner:
             
             result = contamination_evaluator.evaluate(
                 executor = self.executor,
-                method=self.contamination_strategy,
-                model_path=run_spec.adapter_spec.model,  
+                method=self.contamination_strategy, 
                 benchmark_path=input_instances_output_path,  
                 scenario_state=scenario_state,
-                metric_service=self.metric_service,
-                eval_cache_path=self.eval_cache_path,
-                parallelism=self.executor.execution_spec.parallelism,
             )
 
             print("the contamination result was:!", result, ". Do you want to continue with the evaluation? (Yes/No)")

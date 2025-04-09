@@ -12,12 +12,8 @@ class ContaminationEvaluator:
         self,
         executor,
         method: str,
-        model_path: str,
         benchmark_path: str,
         scenario_state,
-        metric_service,
-        eval_cache_path: str,
-        parallelism: int
     ) -> MetricResult:
         """
         Evaluate contamination using the specified method.
@@ -44,10 +40,6 @@ class ContaminationEvaluator:
         # Run the selected evaluator
         return evaluator.evaluate(
             ex=executor,
-            model_path=model_path,
             benchmark_path=benchmark_path,
-            scenario_state=scenario_state,
-            metric_service=metric_service,
-            eval_cache_path=eval_cache_path,
-            parallelism=parallelism
+            scenario_state=scenario_state
         )
