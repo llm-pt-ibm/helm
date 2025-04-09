@@ -65,7 +65,12 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         # Cria nova instância com o input atualizado
                         novo_instance = replace(request_state.instance, input=novo_input)
                         # Cria novo request com o prompt atualizado
-                        novo_request = replace(request_state.request, prompt="What is the word that is masked [MASK]?")
+                        novo_request = replace(
+                            request_state.request,
+                            prompt="What is the word that is masked [MASK]?",
+                            max_tokens=15
+                        )
+
                         # Cria novo request_state com as alterações
                         novo_request_state = replace(request_state, instance=novo_instance, request=novo_request)
                         # Atualiza o cenário com o novo estado
@@ -82,7 +87,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 break
 
             # Agora scenario_state.request_states está atualizado corretamente
-            response_scenario_state = self._query_model(None, model_path, scenario_state, ex)
+            response_scenario_state = self._query_model(scenario_state, ex)
             
             # Process results
             results = []
@@ -192,8 +197,9 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         
         return prompt, word
     
-    def _query_model(self, prompt, model_path, scenario_state, executor):
+    def _query_model(self, scenario_state, executor):
         """Query the model with the modified scenario state."""
-        # Execute the scenario state with modified prompts
+        # Execute the scenario
         response_scenario_state = executor.execute(scenario_state)
+
         return response_scenario_state
