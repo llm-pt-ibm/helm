@@ -59,16 +59,31 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                     data_point = data_points[i]
                     prompt, masked_word = await self._build_prompt(data_point, tagger, eval_data_name)
                     if prompt != "failed":
+                        # Modifies the instance input
                         new_input = replace(request_state.instance.input, text=prompt)
                         new_instance = replace(request_state.instance, input=new_input)
+                        
+                        # Modifies the request prompt
                         new_request = replace(
                             request_state.request,
                             prompt=prompt,
                             max_tokens=10,
-                            temperature=0.0 
+                            temperature=0.0,
+                            stop_sequences=[]
                         )
-
-                        # Creates new request_state with the changes
+                        
+                        # Update instructions in adapter_spec
+                        new_adapter_spec = replace(
+                            scenario_state.adapter_spec, 
+                            instructions=prompt,
+                            input_prefix='', 
+                            output_prefix='Answer: ', 
+                            max_tokens=10, 
+                            stop_sequences=[]
+                        )
+                        scenario_state.adapter_spec = new_adapter_spec
+                        
+                        # Creates new request_state
                         novo_request_state = replace(request_state, instance=new_instance, request=new_request)
                         scenario_state.request_states[i] = novo_request_state
                         masked_words.append(masked_word)
@@ -167,7 +182,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             return prompt, word.lower()
         except Exception as e:
             print(f"Error in prompt building: {e}")
-            return "failed", ""
+            return prompt, word.lower()
 
     def _instance_to_dict(self, instance):
         """Convert a HELM instance to a dictionary format compatible with this evaluator."""
