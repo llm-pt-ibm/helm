@@ -14,6 +14,7 @@ class ContaminationEvaluator:
         method: str,
         benchmark_path: str,
         scenario_state,
+        language: str
     ) -> MetricResult:
         """
         Evaluate contamination using the specified method.
@@ -41,5 +42,6 @@ class ContaminationEvaluator:
         return evaluator.evaluate(
             ex=executor,
             benchmark_path=benchmark_path,
-            scenario_state=scenario_state
+            scenario_state=scenario_state,
+            language=language
         )
