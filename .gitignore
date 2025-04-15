@@ -50,3 +50,5 @@ notes.otl
 .nfs*
 
 node_modules
+
+src/helm/contamination/contamination.json
