@@ -35,7 +35,7 @@ class ContaminationEvaluator:
         # Select the appropriate evaluator based on the method
         if method == "ts_guessing_question_base":
             evaluator = TSGuessingQuestionBasedContaminationEvaluator()
-        if method == "ts_guessing_question_multichoice":
+        elif method == "ts_guessing_question_multichoice":
             evaluator = TSGuessingQuestionMultiChoiceContaminationEvaluator()
         # Add more evaluators as needed
         else:

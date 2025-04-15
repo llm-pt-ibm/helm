@@ -293,7 +293,7 @@ class Runner:
         if self.contamination:
             contamination_evaluator = ContaminationEvaluator()
             
-            result, metric = contamination_evaluator.evaluate(
+            result = contamination_evaluator.evaluate(
                 executor = self.executor,
                 method=self.contamination[0], 
                 benchmark_path=input_instances_output_path,  
@@ -313,7 +313,6 @@ class Runner:
                 "method": self.contamination[0],
                 "model": model_name,
                 "benchmark": os.path.basename(input_instances_output_path),
-                "metric": metric,
                 "result": result
             }
             

@@ -11,7 +11,6 @@ from helm.common.hierarchical_logger import hlog, htrack_block
 class TSGuessingQuestionBasedContaminationEvaluator:
     """
     Implementation of question-based guessing test for contamination detection.
-    Modified to wrap async calls in synchronous methods.
     """
     
     def __init__(self):
@@ -20,7 +19,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         
     def evaluate(
         self,
-        ex,
+        executor,
         benchmark_path: str,
         scenario_state,
         language: str 
@@ -28,11 +27,16 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         """
         Evaluate contamination using the TS guessing question-based approach.
         """
-        return asyncio.run(self._evaluate_async(ex, benchmark_path, scenario_state, language))
+        return asyncio.run(self._evaluate_async(
+            executor, 
+            benchmark_path, 
+            scenario_state, 
+            language
+        ))
         
     async def _evaluate_async(
         self,
-        ex,
+        executor,
         benchmark_path: str,
         scenario_state,
         language: str 
@@ -92,7 +96,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 else:
                     masked_words.append("")
 
-            response_scenario_state = ex.execute(scenario_state)
+            response_scenario_state = executor.execute(scenario_state)
             # Process results
             results = []
             for i, rs in enumerate(response_scenario_state.request_states):
@@ -111,8 +115,8 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 exact_match = sum(1 for r in results if r["response"] == r["masked_word"]) / len(results)
             else:
                 exact_match = 0.0
-            
-            return exact_match, "Exact Match"
+             
+            return {"exact_match": exact_match}
     
     def _get_spacy_tagger(self):
         """Initialize and return a spaCy language model for POS tagging."""

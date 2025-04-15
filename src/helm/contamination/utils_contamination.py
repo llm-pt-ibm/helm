@@ -1,3 +1,6 @@
+
+
+
 class UtilsContamination:
     @staticmethod
     def get_choices(example):
@@ -79,9 +82,3 @@ class UtilsContamination:
                     
         return "Unknown question"
     
-    @staticmethod
-    def detect_structure_and_extract(example):
-        question = UtilsContamination.get_question_text(example)
-        choices = UtilsContamination.get_choices(example)
-        answer_index = UtilsContamination.get_answer_index(example)
-        return question, choices, answer_index
