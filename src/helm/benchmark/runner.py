@@ -136,7 +136,6 @@ def downsample_eval_instances(
 
     return all_train_instances + selected_eval_instances
 
-
 class Runner:
     """
     The main entry point for running the entire benchmark.  Mostly just
@@ -290,6 +289,7 @@ class Runner:
             annotator_specs=run_spec.annotators,
         )
 
+        # Contamination assessment stage
         if self.contamination:
             contamination_evaluator = ContaminationEvaluator()
             
@@ -326,17 +326,12 @@ class Runner:
             with open(output_path, "w", encoding="utf-8") as file:
                 json.dump(result_data, file, indent=4)
 
-            if self.contamination[2] == 'feedback':
-                print(f"The contamination result was: {result}. Do you want to continue with the evaluation? (Yes/No)")
-                continue_run = input().strip().lower()
-                if continue_run != "yes":
-                    return
-            
         # Execute (fill up results)
         scenario_state = self.executor.execute(scenario_state)
 
         # Annotate (post-process the results)
         scenario_state = self.annotator_executor.execute(scenario_state)
+        
         # Apply the metrics
         # When performing a dry run, only estimate the number of tokens instead
         # of calculating the metrics.

@@ -110,9 +110,9 @@ def run_benchmarking(
                 parts = contamination_item.split(':')
                 contamination_values.extend(parts)
                 
-        while len(contamination_values) < 3:
+        while len(contamination_values) < 2:
             contamination_values.append("")
-        contamination_values = contamination_values[:3]
+        contamination_values = contamination_values[:2]
 
     execution_spec = ExecutionSpec(
         auth=auth,
