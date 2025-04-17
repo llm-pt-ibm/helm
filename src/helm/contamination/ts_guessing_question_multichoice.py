@@ -114,6 +114,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     wrong_letters.append("")
 
             try:
+                print("SCENARIO: ", scenario_state)
                 response_scenario_state = self._query_model(scenario_state, executor)
             except Exception as e:
                 hlog(f"Error querying model: {e}")
@@ -257,8 +258,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 
             wrong_letter = self.alphabet[wrong_index]
         
-            # Substituir o placeholder pelo token [MASK] original
-            masked_part_one = part_one.replace("__MASK_TOKEN__", "[MASK]")
+            masked_part_one = part_one.replace("__mask_token__", "[MASK]")
 
             # Build the final prompt
             prompt = f"{masked_part_one} {wrong_letter} {part_two}\n\n{part_three}\n\n{part_four} {text}\n{part_five}"
