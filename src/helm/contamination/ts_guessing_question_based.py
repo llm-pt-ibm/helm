@@ -81,7 +81,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                             prompt, masked_word = self._build_prompt(
                                 data_point, tagger, eval_data_name, part_one, part_two, part_four
                             )
-                            
+
                             if prompt != "failed":
                                 # Safely modify the instance input
                                 if hasattr(request_state, "instance") and hasattr(request_state.instance, "input"):
@@ -93,21 +93,20 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                         new_request = replace(
                                             request_state.request,
                                             prompt=prompt,
-                                            max_tokens=10,
-                                            temperature=0.0,
-                                            stop_sequences=[]
+                                            max_tokens=15,
+                                            temperature=0.0
                                         )
                                         
                                         # Update instructions in adapter_spec if it exists
                                         if hasattr(scenario_state, "adapter_spec"):
                                             try:
                                                 new_adapter_spec = replace(
-                                                    scenario_state.adapter_spec, 
+                                                    scenario_state.adapter_spec,
+                                                    method='generation',
                                                     instructions=prompt,
                                                     input_prefix='', 
                                                     output_prefix='Answer: ', 
-                                                    max_tokens=10, 
-                                                    stop_sequences=[]
+                                                    max_tokens=15
                                                 )
                                                 scenario_state.adapter_spec = new_adapter_spec
                                             except Exception as e:

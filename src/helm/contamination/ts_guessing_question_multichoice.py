@@ -67,38 +67,54 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             answers, wrong_letters = [], []
             part_one, part_two, part_three, part_four, part_five, part_six = await self._prompt_default()
             
-            # Build prompts and update scenario_state
-            for i, request_state in enumerate(scenario_state.request_states):
-                if i < len(data_points):
-                    data_point = data_points[i]
-                    try:
-                        prompt, answer, wrong_letter = self._build_prompt(data_point, eval_data_name, part_one, part_two, part_three, part_four, part_five, part_six)
-                        if prompt != "failed":
-                            new_input = replace(request_state.instance.input, text=prompt)
-                            new_instance = replace(request_state.instance, input=new_input)
-                            new_request = replace(
-                                request_state.request,
-                                prompt=prompt,
-                                max_tokens=100,
-                                temperature=0.0
+            # Build prompts and update scenario_state             
+            for i, request_state in enumerate(scenario_state.request_states):                 
+                if i < len(data_points):                     
+                    data_point = data_points[i]                     
+                    try:                         
+                        prompt, answer, wrong_letter = self._build_prompt(data_point, eval_data_name, part_one, part_two, part_three, part_four, part_five, part_six)                         
+                        if prompt != "failed":                             
+                            new_input = replace(request_state.instance.input, text=prompt)                             
+                            new_instance = replace(request_state.instance, input=new_input)                             
+                            new_request = replace(                                 
+                                request_state.request,                                 
+                                prompt=prompt,                                 
+                                max_tokens=100,                                 
+                                temperature=0.0                         
                             )
-                            scenario_state.request_states[i] = replace(
-                                request_state,
-                                instance=new_instance,
-                                request=new_request
-                            )
-                            answers.append(answer)
-                            wrong_letters.append(wrong_letter)
-                        else:
-                            hlog(f"Failed to build prompt for data point {i}")
-                            answers.append("")
-                            wrong_letters.append("")
-                    except Exception as e:
-                        hlog(f"Error building prompt for data point {i}: {e}")
-                        answers.append("")
-                        wrong_letters.append("")
-                else:
-                    answers.append("")
+                            
+                            # Update adapter_spec
+                            if hasattr(scenario_state, "adapter_spec"):                                             
+                                try:                                                 
+                                    new_adapter_spec = replace(                                                     
+                                        scenario_state.adapter_spec,                                                      
+                                        method='generation',
+                                        instructions=prompt,
+                                        input_prefix='',                                                      
+                                        output_prefix='Answer: ',                                                      
+                                        max_tokens=100                                                                                                 
+                                    )                                                 
+                                    scenario_state.adapter_spec = new_adapter_spec                                             
+                                except Exception as e:                                                 
+                                    hlog(f"Error updating adapter_spec: {e}")
+                            
+                            scenario_state.request_states[i] = replace(                                 
+                                request_state,                                 
+                                instance=new_instance,                                 
+                                request=new_request                             
+                            )                             
+                            answers.append(answer)                             
+                            wrong_letters.append(wrong_letter)                         
+                        else:                             
+                            hlog(f"Failed to build prompt for data point {i}")                             
+                            answers.append("")                             
+                            wrong_letters.append("")                     
+                    except Exception as e:                         
+                        hlog(f"Error building prompt for data point {i}: {e}")                         
+                        answers.append("")                         
+                        wrong_letters.append("")                 
+                else:                     
+                    answers.append("")                     
                     wrong_letters.append("")
 
             try:
@@ -122,7 +138,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                             })
                     except Exception as e:
                         hlog(f"Error processing result for instance {i}: {e}")
-            print("RESULTS: ", results)
+
             if not results:
                 hlog("No valid results to evaluate")
                 return 0.0
@@ -246,8 +262,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             wrong_letter = self.alphabet[wrong_index]
         
             # Substituir o placeholder pelo token [MASK] original
-            # Corrigindo para usar o token em maiúsculas como aparece no original
-            masked_part_one = part_one.replace("__mask_token__", "[MASK]")
+            masked_part_one = part_one.replace("__MASK_TOKEN__", "[MASK]")
 
             # Build the final prompt
             prompt = f"{masked_part_one} {wrong_letter} {part_two}\n\n{part_three}\n\n{part_four} {text}\n{part_five}"
