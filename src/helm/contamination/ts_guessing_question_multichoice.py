@@ -56,13 +56,9 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             data_points = self._filter_data(scenario_state)
             hlog(f"Filtered to {len(data_points)} data points")
 
-            n_eval_data_points = min(100, len(data_points))
-            if n_eval_data_points == 0:
-                hlog("No valid data points found")
-                return 0.0
 
             p = np.random.permutation(len(data_points))
-            data_points = [data_points[p[i]] for i in range(n_eval_data_points)]
+            data_points = [data_points[p[i]] for i in range(len(data_points))]
 
             answers, wrong_letters = [], []
             part_one, part_two, part_three, part_four, part_five, part_six = await self._prompt_default()
