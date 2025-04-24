@@ -2,6 +2,7 @@ import dacite
 import json
 import math
 import os
+import copy
 import traceback
 import typing
 from collections import Counter
@@ -289,15 +290,22 @@ class Runner:
             annotator_specs=run_spec.annotators,
         )
 
+        # Execute (fill up results)
+        scenario_state = self.executor.execute(scenario_state)
+
+        # Annotate (post-process the results)
+        scenario_state = self.annotator_executor.execute(scenario_state)
+        
         # Contamination assessment stage
         if self.contamination:
+            scenario_state_copy = copy.deepcopy(scenario_state)
             contamination_evaluator = ContaminationEvaluator()
             
             result = contamination_evaluator.evaluate(
                 executor = self.executor,
                 method=self.contamination[0], 
                 benchmark_path=input_instances_output_path,  
-                scenario_state=scenario_state,
+                scenario_state=scenario_state_copy,
                 language=self.contamination[1]
             )
 
@@ -326,12 +334,6 @@ class Runner:
             with open(output_path, "w", encoding="utf-8") as file:
                 json.dump(result_data, file, indent=4)
 
-        # Execute (fill up results)
-        scenario_state = self.executor.execute(scenario_state)
-
-        # Annotate (post-process the results)
-        scenario_state = self.annotator_executor.execute(scenario_state)
-        
         # Apply the metrics
         # When performing a dry run, only estimate the number of tokens instead
         # of calculating the metrics.
@@ -365,7 +367,7 @@ class Runner:
         if self.skip_instances:
             hlog("skip_instances was True. Skipping writing results out.")
             return
-
+        
         # Output benchmarking information and results to files
         write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
 

@@ -158,11 +158,10 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                     })
                         except Exception as e:
                             hlog(f"Error processing result for instance {i}: {e}")
-
+                print("RESULTS: ", results)
                 # Calculate metrics
                 if results:
                     exact_match = sum(1 for r in results if r["response"] == r["masked_word"]) / len(results)
-                    hlog(f"Exact match score: {exact_match} from {len(results)} valid results")
                 else:
                     hlog("No valid results to calculate exact match")
                     exact_match = 0.0
