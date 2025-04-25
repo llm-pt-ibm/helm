@@ -181,6 +181,11 @@ class Runner:
 
         # Output the results under a folder with the name of the suite
         self.runs_path: str = os.path.join(output_path, "runs", suite)
+        
+        # Output path for predictions
+        self.predictions_path: str = os.path.join(output_path, "predictions", suite)
+        ensure_directory_exists(self.predictions_path)
+ 
 
         # The path where to cache files needs to compute metrics, e.g., human evaluation results
         self.eval_cache_path: str = os.path.join(self.runs_path, "eval_cache")
@@ -188,14 +193,19 @@ class Runner:
 
     def _get_run_path(self, run_spec: RunSpec) -> str:
         return os.path.join(self.runs_path, run_spec.name)
+    
+        
+    def _get_prediction_path(self, run_spec: RunSpec) -> str:
+        return os.path.join(self.predictions_path, run_spec.name)
 
-    def _is_run_completed(self, run_path: str):
+    def _is_run_completed(self, run_path: str, prediction_path: str):
         """Return whether the run was previously completed.
 
         A run is completed if all of the expected output files exist."""
-        if not os.path.isdir(run_path):
+        if not os.path.isdir(prediction_path):
             return False
         output_paths = [
+            os.path.join(prediction_path, "predictions.json"),
             os.path.join(run_path, "run_spec.json"),
             os.path.join(run_path, "scenario.json"),
             os.path.join(run_path, "scenario_state.json"),
@@ -226,10 +236,11 @@ class Runner:
 
     def run_one(self, run_spec: RunSpec):
         run_path: str = self._get_run_path(run_spec)
-        if self.skip_completed_runs and self._is_run_completed(run_path):
-            hlog(f"Skipping run {run_spec.name} because run is completed and all output files exist.")
-            return
-        ensure_directory_exists(run_path)
+        prediction_path: str = self._get_prediction_path(run_spec)
+         
+        if self.skip_completed_runs and self._is_run_completed(run_path, prediction_path):
+            hlog(f"Skipping run {run_spec.name} because predictions already exist.")
+            return ensure_directory_exists(prediction_path)
 
         # Load the scenario
         scenario: Scenario = create_scenario(run_spec.scenario_spec)
@@ -292,57 +303,120 @@ class Runner:
 
         # Annotate (post-process the results)
         scenario_state = self.annotator_executor.execute(scenario_state)
+        #external_model_results = self.evaluate_with_external_model(scenario_state)
+        #scenario_state = self.add_external_model_annotatioms(scenario_state, external_model_results)
 
-        # Apply the metrics
-        # When performing a dry run, only estimate the number of tokens instead
-        # of calculating the metrics.
-        metrics: List[MetricInterface] = (
-            [DryRunMetric()] if self.dry_run else [create_metric(metric_spec) for metric_spec in run_spec.metric_specs]
-        )
-        stats: List[Stat] = []
-        per_instance_stats: List[PerInstanceStats] = []
-        with htrack_block(f"{len(metrics)} metrics"):
-            for metric in metrics:
-                with htrack_block(metric):
-                    metric_result: MetricResult = metric.evaluate(
-                        scenario_state,
-                        self.metric_service,
-                        self.eval_cache_path,
-                        self.executor.execution_spec.parallelism,
-                    )
-                    stats.extend(metric_result.aggregated_stats)
-                    per_instance_stats.extend(metric_result.per_instance_stats)
+        if (self.llm_judge == "yes"):
+            # Extrair predições em formato JSON
+            predictions = self._extract_predictions(scenario_state)
 
-        # Check that there aren't duplicate `Stat`s
-        # Note: doesn't catch near misses.
-        metric_counts: typing.Counter[MetricName] = Counter([stat.name for stat in stats])
-        for metric_name, count in metric_counts.items():
-            if count > 1:
-                hlog(f"WARNING: duplicate metric name {metric_name}")
+            if self.skip_instances:
+                hlog("skip_instances was True. Skipping writing results out.")
+                return
+            
+            write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
 
-        # Print out the number of stats
-        hlog(f"Generated {len(stats)} stats.")
+            # Write out scenario
+            write(os.path.join(run_path, "scenario.json"), json.dumps(asdict_without_nones(scenario), indent=2))
 
-        if self.skip_instances:
-            hlog("skip_instances was True. Skipping writing results out.")
-            return
+            # Write scenario state
+            write(os.path.join(run_path, "scenario_state.json"), json.dumps(asdict_without_nones(scenario_state), indent=2))
+            
+            # Write predictions
+            write(os.path.join(prediction_path, "predictions.json"), json.dumps(predictions, indent=2))
+            
+            hlog(f"Salvando as predições no local:  {os.path.join(prediction_path, 'predictions.json')}")
+            cache_stats.print_status()
+        else:
+            # Apply the metrics
+            # When performing a dry run, only estimate the number of tokens instead
+            # of calculating the metrics.
+            metrics: List[MetricInterface] = (
+                [DryRunMetric()] if self.dry_run else [create_metric(metric_spec) for metric_spec in run_spec.metric_specs]
+            )
 
-        # Output benchmarking information and results to files
-        write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
+            #if not self.dry_run:
+                #metrics.append(self.create_external_model_metric())
 
-        # Write out scenario
-        write(os.path.join(run_path, "scenario.json"), json.dumps(asdict_without_nones(scenario), indent=2))
+            stats: List[Stat] = []
+            per_instance_stats: List[PerInstanceStats] = []
+            with htrack_block(f"{len(metrics)} metrics"):
+                for metric in metrics:
+                    with htrack_block(metric):
+                        metric_result: MetricResult = metric.evaluate(
+                            scenario_state,
+                            self.metric_service,
+                            self.eval_cache_path,
+                            self.executor.execution_spec.parallelism,
+                        )
+                        stats.extend(metric_result.aggregated_stats)
+                        per_instance_stats.extend(metric_result.per_instance_stats)
 
-        # Write scenario state
-        write(os.path.join(run_path, "scenario_state.json"), json.dumps(asdict_without_nones(scenario_state), indent=2))
+            # Check that there aren't duplicate `Stat`s
+            # Note: doesn't catch near misses.
+            metric_counts: typing.Counter[MetricName] = Counter([stat.name for stat in stats])
+            for metric_name, count in metric_counts.items():
+                if count > 1:
+                    hlog(f"WARNING: duplicate metric name {metric_name}")
 
-        write(
-            os.path.join(run_path, "stats.json"),
-            json.dumps([asdict_without_nones(stat) for stat in remove_stats_nans(stats)], indent=2),
-        )
-        write(
-            os.path.join(run_path, "per_instance_stats.json"),
-            json.dumps(list(map(asdict_without_nones, remove_per_instance_stats_nans(per_instance_stats))), indent=2),
-        )
+            # Print out the number of stats
+            hlog(f"Generated {len(stats)} stats.")
 
-        cache_stats.print_status()
+            if self.skip_instances:
+                    hlog("skip_instances was True. Skipping writing results out.")
+                    return
+
+
+            # Output benchmarking information and results to files
+            write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
+
+            # Write out scenario
+            write(os.path.join(run_path, "scenario.json"), json.dumps(asdict_without_nones(scenario), indent=2))
+
+            # Write scenario state
+            write(os.path.join(run_path, "scenario_state.json"), json.dumps(asdict_without_nones(scenario_state), indent=2))
+
+            write(
+                os.path.join(run_path, "stats.json"),
+                json.dumps([asdict_without_nones(stat) for stat in remove_stats_nans(stats)], indent=2),
+            )
+            write(
+                os.path.join(run_path, "per_instance_stats.json"),
+                json.dumps(list(map(asdict_without_nones, remove_per_instance_stats_nans(per_instance_stats))), indent=2),
+            )
+
+            cache_stats.print_status()
+
+    def _extract_predictions(self, scenario_state: ScenarioState) -> List[Dict[str, Any]]:
+        """
+        Extrair as predições do estado do cenário em formato JSON.
+        """
+        predictions = []
+        
+        for request_state in scenario_state.request_states:
+            instance = request_state.instance
+            result = request_state.result
+            
+            if result is None or not result.completions or len(result.completions) == 0:
+                # No result for this instance or no completions
+                continue
+                
+            completion = result.completions[0]
+            
+            # Extrair texto e logprob com segurança
+            completion_text = completion.text if hasattr(completion, "text") else None
+            
+            # Criar o dicionário básico de predição
+            prediction = {
+                "instance_id": instance.id,
+                "input": {},
+                "prediction": completion_text
+            }
+            
+            # Adicionar texto de entrada se existir
+            if hasattr(instance, "input") and hasattr(instance.input, "text"):
+                prediction["input"] = instance.input.text
+        
+            predictions.append(prediction)
+            
+        return predictions
