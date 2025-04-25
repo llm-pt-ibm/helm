@@ -76,7 +76,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                                 request_state.request,                                 
                                 prompt=prompt,                                 
                                 max_tokens=100,                                 
-                                temperature=0.0                         
+                                temperature=0.0                     
                             )
                             
                             # Update adapter_spec
@@ -114,7 +114,9 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     wrong_letters.append("")
 
             try:
+
                 response_scenario_state = self._query_model(scenario_state, executor)
+                print("SCENARIO: ", response_scenario_state)
             except Exception as e:
                 hlog(f"Error querying model: {e}")
                 return 0.0
