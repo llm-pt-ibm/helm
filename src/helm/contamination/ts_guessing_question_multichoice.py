@@ -85,7 +85,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                                     new_adapter_spec = replace(                                                     
                                         scenario_state.adapter_spec,                                                      
                                         method='generation',
-                                        instructions=prompt,
+                                        instructions='',
                                         input_prefix='',                                                      
                                         output_prefix='Answer: ',                                                      
                                         max_tokens=100                                                                                                 
@@ -114,7 +114,6 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     wrong_letters.append("")
 
             try:
-                print("SCENARIO: ", scenario_state)
                 response_scenario_state = self._query_model(scenario_state, executor)
             except Exception as e:
                 hlog(f"Error querying model: {e}")
@@ -135,7 +134,6 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                             })
                     except Exception as e:
                         hlog(f"Error processing result for instance {i}: {e}")
-
             if not results:
                 hlog("No valid results to evaluate")
                 return 0.0

@@ -103,7 +103,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                                 new_adapter_spec = replace(
                                                     scenario_state.adapter_spec,
                                                     method='generation',
-                                                    instructions=prompt,
+                                                    instructions='',
                                                     input_prefix='', 
                                                     output_prefix='Answer: ', 
                                                     max_tokens=15
@@ -158,7 +158,6 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                     })
                         except Exception as e:
                             hlog(f"Error processing result for instance {i}: {e}")
-                print("RESULTS: ", results)
                 # Calculate metrics
                 if results:
                     exact_match = sum(1 for r in results if r["response"] == r["masked_word"]) / len(results)
