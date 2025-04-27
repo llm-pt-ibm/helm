@@ -80,6 +80,7 @@ def run_benchmarking(
     output_path: str,
     suite: str,
     dry_run: bool,
+    llm_judge: Optional[str],
     skip_instances: bool,
     cache_instances: bool,
     cache_instances_only: bool,
@@ -87,7 +88,7 @@ def run_benchmarking(
     exit_on_error: bool,
     runner_class_name: Optional[str],
     mongo_uri: Optional[str] = None,
-    disable_cache: Optional[bool] = None,
+    disable_cache: Optional[bool] = None
 ) -> List[RunSpec]:
     """Runs RunSpecs given a list of RunSpec descriptions."""
     sqlite_cache_backend_config: Optional[SqliteCacheBackendConfig] = None
@@ -123,6 +124,7 @@ def run_benchmarking(
         cache_instances_only,
         skip_completed_runs,
         exit_on_error,
+        llm_judge=llm_judge
     )
     runner.run_all(run_specs)
     return run_specs
@@ -266,10 +268,15 @@ def main():
         default=None,
         help="Full class name of the Runner class to use. If unset, uses the default Runner.",
     )
+    parser.add_argument(
+        "--llm-judge",
+        type=str,
+        default=None,
+        help="Checks if the evaluation form uses llm as judge.",
+    )
     add_run_args(parser)
     args = parser.parse_args()
     validate_args(args)
-
     register_builtin_configs_from_helm_package()
     register_configs_from_directory(args.local_path)
 
@@ -337,7 +344,6 @@ def main():
     auth: Authentication = (
         Authentication("") if args.skip_instances or not args.server_url else create_authentication(args)
     )
-
     run_benchmarking(
         run_specs=run_specs,
         auth=auth,
@@ -347,6 +353,7 @@ def main():
         output_path=args.output_path,
         suite=args.suite,
         dry_run=args.dry_run,
+        llm_judge=args.llm_judge,
         skip_instances=args.skip_instances,
         cache_instances=args.cache_instances,
         cache_instances_only=args.cache_instances_only,
@@ -354,7 +361,7 @@ def main():
         exit_on_error=args.exit_on_error,
         runner_class_name=args.runner_class_name,
         mongo_uri=args.mongo_uri,
-        disable_cache=args.disable_cache,
+        disable_cache=args.disable_cache
     )
 
     if args.run_specs:
