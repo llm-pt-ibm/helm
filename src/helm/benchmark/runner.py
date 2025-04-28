@@ -327,6 +327,16 @@ class Runner:
             
             hlog(f"Salvando as predições no local:  {os.path.join(prediction_path, 'predictions.json')}")
             cache_stats.print_status()
+
+            print("COMEÇANDO AVALIAÇÃO DO JULGADOR===================================================================================")
+
+            from helm.benchmark.llm_judge import LLMJudge
+            # Initialize the LLMJudge
+            llm_judge = LLMJudge(self.executor.service)
+            # Judge the predictions
+            llm_judge.judge_and_save(prediction_path, prediction_path)
+            hlog(f"Salvando os julgamentos no local:  {os.path.join(prediction_path, 'judgements.json')}")
+
         else:
             # Apply the metrics
             # When performing a dry run, only estimate the number of tokens instead
