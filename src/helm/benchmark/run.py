@@ -106,13 +106,13 @@ def run_benchmarking(
         contamination_values: List[str] = []
 
         if contamination:
-            for contamination_item in contamination:
-                parts = contamination_item.split(':')
-                contamination_values.extend(parts)
+          for contamination_item in contamination:
+              parts = contamination_item.split(':')
+              contamination_values.extend(parts)
                 
-        while len(contamination_values) < 2:
-            contamination_values.append("")
-        contamination_values = contamination_values[:2]
+          while len(contamination_values) < 2:
+              contamination_values.append("")
+          contamination_values = contamination_values[:2]
 
     execution_spec = ExecutionSpec(
         auth=auth,

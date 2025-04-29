@@ -297,7 +297,7 @@ class Runner:
         scenario_state = self.annotator_executor.execute(scenario_state)
         
         # Contamination assessment stage
-        if self.contamination:
+        if self.contamination != []:
             scenario_state_copy = copy.deepcopy(scenario_state)
             contamination_evaluator = ContaminationEvaluator()
             

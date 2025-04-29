@@ -114,9 +114,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     wrong_letters.append("")
 
             try:
-
                 response_scenario_state = self._query_model(scenario_state, executor)
-                print("SCENARIO: ", response_scenario_state)
             except Exception as e:
                 hlog(f"Error querying model: {e}")
                 return 0.0
