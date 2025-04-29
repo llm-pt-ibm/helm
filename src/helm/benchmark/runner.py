@@ -36,6 +36,7 @@ from helm.benchmark.metrics.metric_name import MetricName
 from helm.benchmark.metrics.metric_service import MetricService
 from helm.benchmark.metrics.metric import MetricInterface, MetricResult, PerInstanceStats, create_metric, Stat
 from helm.benchmark.window_services.tokenizer_service import TokenizerService
+from helm.benchmark.llm_judge import LLMJudger
 
 
 LATEST_SYMLINK: str = "latest"
@@ -328,13 +329,18 @@ class Runner:
             hlog(f"Salvando as predições no local:  {os.path.join(prediction_path, 'predictions.json')}")
             cache_stats.print_status()
 
-            print("COMEÇANDO AVALIAÇÃO DO JULGADOR===================================================================================")
+            print("===========================================COMEÇANDO AVALIAÇÃO DO JULGADOR===================================================================================")
 
-            from helm.benchmark.llm_judge import LLMJudge
             # Initialize the LLMJudge
-            llm_judge = LLMJudge(self.executor.service)
+            llm_judge = LLMJudger(self.executor.service)
+            print(llm_judge)
+            print("===========================================JULGADOR INICIALIZADO===================================================================================")
             # Judge the predictions
-            llm_judge.judge_and_save(prediction_path, prediction_path)
+            predictions_file = os.path.join(prediction_path, "predictions.json")
+            judgements_file = os.path.join(prediction_path, "llm_judgements.json")
+
+            llm_judge.judge_and_save(predictions_file, judgements_file)
+
             hlog(f"Salvando os julgamentos no local:  {os.path.join(prediction_path, 'judgements.json')}")
 
         else:
