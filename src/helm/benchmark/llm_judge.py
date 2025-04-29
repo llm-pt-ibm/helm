@@ -75,11 +75,11 @@ class LLMJudger:
         from helm.common.request import Request
 
         request = Request(
-            model="openai/gpt2",
-            model_deployment="huggingface/gpt2",
+            model=self.judge_model,
+            model_deployment=self._resolve_model_deployment(),  
             prompt=prompt,
             temperature=0.7,
-            max_tokens=200,  # suporta resposta + explicação
+            max_tokens=50,  # suporta resposta + explicação
         )
 
         result = self.executor_service.make_request(Authentication(""), request)
@@ -148,3 +148,13 @@ class LLMJudger:
             json.dump(judgements, f, indent=2)
 
         print(f"Julgmentos salvos em: {output_path}")
+
+    def _resolve_model_deployment(self) -> str:
+        print("CHEGUEI AQUI NO MODEL DEPLOYMENT====================================================================")
+
+        from helm.benchmark.model_deployment_registry import get_default_model_deployment_for_model
+    
+        deployment_name = get_default_model_deployment_for_model(self.judge_model)
+        if not deployment_name:
+            raise Exception(f"Não foi possível encontrar um model deployment para '{self.judge_model}'")
+        return deployment_name

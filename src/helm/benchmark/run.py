@@ -81,6 +81,7 @@ def run_benchmarking(
     suite: str,
     dry_run: bool,
     llm_judge: Optional[str],
+    judge_model: Optional[str],
     skip_instances: bool,
     cache_instances: bool,
     cache_instances_only: bool,
@@ -124,7 +125,8 @@ def run_benchmarking(
         cache_instances_only,
         skip_completed_runs,
         exit_on_error,
-        llm_judge=llm_judge
+        llm_judge=llm_judge,
+        judge_model=judge_model,
     )
     runner.run_all(run_specs)
     return run_specs
@@ -274,6 +276,13 @@ def main():
         default=None,
         help="Checks if the evaluation form uses llm as judge.",
     )
+    parser.add_argument(
+        "--judge-model",
+        type=str,
+        default=None,
+        help="Model to use for LLM judge.",
+    )
+
     add_run_args(parser)
     args = parser.parse_args()
     validate_args(args)
@@ -354,6 +363,7 @@ def main():
         suite=args.suite,
         dry_run=args.dry_run,
         llm_judge=args.llm_judge,
+        judge_model=args.judge_model,
         skip_instances=args.skip_instances,
         cache_instances=args.cache_instances,
         cache_instances_only=args.cache_instances_only,

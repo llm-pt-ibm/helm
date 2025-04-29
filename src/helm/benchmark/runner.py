@@ -149,9 +149,11 @@ class Runner:
         cache_instances_only: bool,
         skip_completed_runs: bool,
         exit_on_error: bool,
-        llm_judge:str
+        llm_judge:str,
+        judge_model:str,
     ):
         self.llm_judge = llm_judge
+        self.judge_model = judge_model
         self.executor = Executor(execution_spec)
         self.annotator_executor = AnnotationExecutor(
             AnnotationExecutionSpec(
@@ -332,7 +334,7 @@ class Runner:
             print("===========================================COMEÇANDO AVALIAÇÃO DO JULGADOR===================================================================================")
 
             # Initialize the LLMJudge
-            llm_judge = LLMJudger(self.executor.service)
+            llm_judge = LLMJudger(self.executor.service, judge_model=self.judge_model)
             print(llm_judge)
             print("===========================================JULGADOR INICIALIZADO===================================================================================")
             # Judge the predictions
