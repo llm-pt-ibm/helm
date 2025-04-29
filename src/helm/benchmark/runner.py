@@ -303,10 +303,6 @@ class Runner:
 
         # Annotate (post-process the results)
         scenario_state = self.annotator_executor.execute(scenario_state)
-
-        print("="*100)
-        print(self.llm_judge)
-        print("="*100)
         
         if (self.llm_judge == "yes"):
             # Extract predictions in JSON format
@@ -328,22 +324,19 @@ class Runner:
             # Write predictions
             write(os.path.join(prediction_path, "predictions.json"), json.dumps(predictions, indent=2))
             
-            hlog(f"Salvando as predições no local:  {os.path.join(prediction_path, 'predictions.json')}")
+            hlog(f"Saving predictions localy: {os.path.join(prediction_path, 'predictions.json')}")
             cache_stats.print_status()
-
-            print("===========================================COMEÇANDO AVALIAÇÃO DO JULGADOR===================================================================================")
 
             # Initialize the LLMJudge
             llm_judge = LLMJudger(self.executor.service, judge_model=self.judge_model)
-            print(llm_judge)
-            print("===========================================JULGADOR INICIALIZADO===================================================================================")
+
             # Judge the predictions
             predictions_file = os.path.join(prediction_path, "predictions.json")
             judgements_file = os.path.join(prediction_path, "llm_judgements.json")
 
             llm_judge.judge_and_save(predictions_file, judgements_file)
 
-            hlog(f"Salvando os julgamentos no local:  {os.path.join(prediction_path, 'judgements.json')}")
+            hlog(f"Saving judments locally: {os.path.join(prediction_path, 'judgements.json')}")
 
         else:
             # Apply the metrics
@@ -402,7 +395,7 @@ class Runner:
 
     def _extract_predictions(self, scenario_state: ScenarioState) -> List[Dict[str, Any]]:
         """
-        Extrair as predições do estado do cenário em formato JSON.
+        Extract predictions from the scenario state.
         """
         predictions = []
         
