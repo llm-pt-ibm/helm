@@ -75,8 +75,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                             new_request = replace(                                 
                                 request_state.request,                                 
                                 prompt=prompt,                                 
-                                max_tokens=100,                                 
-                                temperature=0.0                     
+                                max_tokens=100                                                   
                             )
                             
                             # Update adapter_spec

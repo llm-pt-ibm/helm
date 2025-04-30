@@ -93,8 +93,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                         new_request = replace(
                                             request_state.request,
                                             prompt=prompt,
-                                            max_tokens=15,
-                                            temperature=0.0
+                                            max_tokens=15
                                         )
                                         
                                         # Update instructions in adapter_spec if it exists
@@ -144,21 +143,22 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         try:
                             if (hasattr(rs, 'result') and rs.result is not None and 
                                 hasattr(rs.result, 'completions') and rs.result.completions):
-                                
+
                                 full_response = rs.result.completions[0].text.strip().lower()
                                 
                                 # Safely extract first word
                                 response_words = full_response.split()
-                                if response_words:
-                                    first_word = response_words[0].strip('"""\'\'.,;!?¿¡#').lower()
-                                    results.append({
-                                        "id": f"instance_{i}",
-                                        "masked_word": masked_words[i].lower(),
-                                        "response": first_word
-                                    })
+                                first_word = response_words[0].strip('"""\'\'.,;!?¿¡#').lower() if response_words else ""
+                                
+                                results.append({
+                                    "id": f"instance_{i}",
+                                    "masked_word": masked_words[i].lower(),
+                                    "response": first_word
+                                })
                         except Exception as e:
                             hlog(f"Error processing result for instance {i}: {e}")
-                            
+
+
                 # Calculate metrics
                 if results:
                     exact_match = sum(1 for r in results if r["response"] == r["masked_word"]) / len(results)
