@@ -338,6 +338,9 @@ class Runner:
 
             hlog(f"Saving judments locally: {os.path.join(prediction_path, 'judgements.json')}")
 
+            # apply the metrics
+            self.apply_accuracy_metric(judgements_file)
+
         else:
             # Apply the metrics
             # When performing a dry run, only estimate the number of tokens instead
@@ -426,4 +429,30 @@ class Runner:
             predictions.append(prediction)
             
         return predictions
-        
+    
+    def apply_accuracy_metric(self, judgements_file_path: str) -> None:
+        """
+        Calcula a acurácia com base nas respostas do modelo julgador.
+        Acurácia = número de respostas com judgement == 1 / total de respostas
+        """
+        try:
+            with open(judgements_file_path, "r", encoding="utf-8") as f:
+                judgements: List[Dict[str, Any]] = json.load(f)
+        except Exception as e:
+            hlog(f"ERROR: Could not read judgments file: {e}")
+            return
+
+        if not judgements:
+            hlog("WARNING: No judgments to evaluate accuracy.")
+            return
+
+        total = len(judgements)
+        correct = sum(1 for j in judgements if j.get("judgement") == 1)
+        accuracy = correct / total if total > 0 else 0.0
+
+        hlog(f"LLM-Judge Accuracy: {accuracy:.2%} ({correct}/{total})")
+
+        # Save to file
+        accuracy_path = os.path.join(os.path.dirname(judgements_file_path), "llm_judge_accuracy.json")
+        write(accuracy_path, json.dumps({"accuracy": accuracy, "correct": correct, "total": total}, indent=2))
+        hlog(f"Saved accuracy to {accuracy_path}")
