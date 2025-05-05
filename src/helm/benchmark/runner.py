@@ -432,8 +432,8 @@ class Runner:
     
     def apply_accuracy_metric(self, judgements_file_path: str) -> None:
         """
-        Calcula a acurácia com base nas respostas do modelo julgador.
-        Acurácia = número de respostas com judgement == 1 / total de respostas
+        Calculates accuracy based on the responses of the judging model.
+        Accuracy = number of responses with judgement == 1 / total responses
         """
         try:
             with open(judgements_file_path, "r", encoding="utf-8") as f:
