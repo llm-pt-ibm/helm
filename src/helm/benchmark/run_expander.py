@@ -12,6 +12,7 @@ from helm.benchmark.model_metadata_registry import (
     get_model_metadata,
     get_model_names_with_tag,
     DEPRECATED_MODEL_TAG,
+    UNSUPPORTED_MODEL_TAG,
     FULL_FUNCTIONALITY_TEXT_MODEL_TAG,
     LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG,
     ABLATION_MODEL_TAG,
@@ -20,7 +21,10 @@ from helm.benchmark.model_metadata_registry import (
     AUDIO_LANGUAGE_MODEL_TAG,
     INSTRUCTION_FOLLOWING_MODEL_TAG,
 )
-from helm.benchmark.adaptation.adapters.adapter_factory import ADAPT_GENERATION
+from helm.benchmark.adaptation.adapters.adapter_factory import (
+    ADAPT_GENERATION,
+    ADAPT_MULTIPLE_CHOICE_JOINT_CHAIN_OF_THOUGHT,
+)
 from helm.benchmark.model_deployment_registry import get_model_names_with_tokenizer
 from helm.benchmark.run_spec import RunSpec
 from helm.benchmark.adaptation.adapter_spec import ADAPT_MULTIPLE_CHOICE_JOINT, AdapterSpec, Substitution
@@ -630,8 +634,10 @@ class ModelRunExpander(ReplaceValueRunExpander):
 
         # For each of the keys above, filter out deprecated models.
         deprecated_models = set(get_model_names_with_tag(DEPRECATED_MODEL_TAG))
+        unsupported_models = set(get_model_names_with_tag(UNSUPPORTED_MODEL_TAG))
+        excluded_models = deprecated_models | unsupported_models
         for family_name in values_dict.keys():
-            values_dict[family_name] = [model for model in values_dict[family_name] if model not in deprecated_models]
+            values_dict[family_name] = [model for model in values_dict[family_name] if model not in excluded_models]
 
         return values_dict
 
@@ -1516,6 +1522,11 @@ class OutputFormatInstructions(RunExpander):
                     "Answer only the last question with a short answer. "
                     "Avoid extra, unnecessary information in the answer."
                 )
+            else:
+                raise ValueError(f"Unknown scenario {self.scenario}")
+        elif run_spec.adapter_spec.method == ADAPT_MULTIPLE_CHOICE_JOINT_CHAIN_OF_THOUGHT:
+            if self.scenario == "mmlu_pro" or self.scenario == "gpqa":
+                instructions = 'In your response, replace "insert answer here" with the single uppercase letter corresponding to your answer.'  # noqa: E501
             else:
                 raise ValueError(f"Unknown scenario {self.scenario}")
 

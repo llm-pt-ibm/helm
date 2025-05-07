@@ -46,7 +46,7 @@ class SHCPTBMMedScenario(Scenario):
                 prompt = (
                     "You are reviewing a clinical note from health records of children with "
                     "attention deficit hyperactivity disorder (ADHD) and classifying mentions of "
-                    f"behavioral therapy. Provide an answer to the following {question} with the "
+                    f"behavioral therapy. Provide an answer to the following question: {question} with the "
                     f"following context: {context} , Answer the question with a 'A' for yes or 'B' "
                     "for no. Do not provide any additional details or response, just a simple A or B response."
                 )
