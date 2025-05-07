@@ -6,7 +6,11 @@ from helm.benchmark.adaptation.adapter_spec import ADAPT_GENERATION, AdapterSpec
 from helm.benchmark.adaptation.adapters.adapter_factory import ADAPT_MULTIPLE_CHOICE_JOINT
 from helm.benchmark.adaptation.common_adapter_specs import get_multiple_choice_adapter_spec, get_generation_adapter_spec
 from helm.benchmark.annotation.annotator import AnnotatorSpec
-from helm.benchmark.metrics.common_metric_specs import get_basic_metric_specs, get_exact_match_metric_specs
+from helm.benchmark.metrics.common_metric_specs import (
+    get_basic_metric_specs,
+    get_exact_match_metric_specs,
+    get_open_ended_generation_metric_specs,
+)
 from helm.benchmark.metrics.metric import MetricSpec
 from helm.benchmark.run_spec import RunSpec, run_spec_function
 from helm.benchmark.scenarios.scenario import ScenarioSpec
@@ -194,32 +198,27 @@ def get_czech_bank_qa_spec(config_name: str = "berka_queries_1024_2024_12_18") -
     )
 
 
-@run_spec_function("infinite_bench_sum")
-def get_infinite_bench_sum_spec(min_num_word: float = 0.0, max_num_word: float = 1e7) -> RunSpec:
+@run_spec_function("medi_qa_without_annotator")
+def get_medi_qa_without_annotator_spec() -> RunSpec:
+    """A version of medi_qa that does not use annotators.
 
-    scenario_spec = ScenarioSpec(
-        class_name="helm.benchmark.scenarios.infinite_bench_sum_scenario.InfiniteBenchSumScenario",
-        args={
-            "min_num_word": min_num_word,
-            "max_num_word": max_num_word,
-        },
+    EXPERIMENTAL: You should probably use medi_qa instead."""
+    scenario_spec = ScenarioSpec(class_name="helm.benchmark.scenarios.medi_qa_scenario.MediQAScenario", args={})
+
+    adapter_spec = get_generation_adapter_spec(
+        instructions="Answer the following consumer health question.",
+        input_noun="Question",
+        output_noun="Answer",
+        max_tokens=1024,
+        max_train_instances=0,
+        stop_sequences=[],
     )
 
-    adapter_spec = AdapterSpec(
-        method=ADAPT_GENERATION,
-        input_prefix="",
-        output_prefix="",
-        max_tokens=2000,  # No official number, the average output token is 1.1k according to the paper
-        num_outputs=1,
-        temperature=0.0,
-    )
-
-    metric_specs = get_basic_metric_specs(["rouge_l"])
-
+    metric_specs = get_open_ended_generation_metric_specs()
     return RunSpec(
-        name="infinite_bench_sum",
+        name="medi_qa",
         scenario_spec=scenario_spec,
         adapter_spec=adapter_spec,
         metric_specs=metric_specs,
-        groups=["infinite_bench_sum"],
+        groups=["medi_qa"],
     )

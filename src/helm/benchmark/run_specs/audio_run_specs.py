@@ -113,6 +113,18 @@ def _get_gpt4_critique_metric_specs(num_respondents: int, max_tokens: int) -> Li
     ]
 
 
+def _get_gpt4_refusal_metric_specs(num_respondents: int, max_tokens: int) -> List[MetricSpec]:
+    return [
+        MetricSpec(
+            class_name="helm.benchmark.metrics.gpt4_audio_refusal_metrics.GPT4AudioRefusalCritiqueMetric",
+            args={
+                "num_respondents": num_respondents,
+                "max_tokens": max_tokens,
+            },
+        )
+    ]
+
+
 ########################################################################################################################
 # RunSpecs
 
@@ -215,16 +227,20 @@ def get_mustard_audio_run_spec() -> RunSpec:
 
 
 @run_spec_function("voice_jailbreak_attacks")
-def get_voice_jailbreak_attacks_run_spec(subset: str) -> RunSpec:
+def get_voice_jailbreak_attacks_run_spec(subset: str, num_respondents: int = 1) -> RunSpec:
     scenario_spec = ScenarioSpec(
         class_name="helm.benchmark.scenarios.audio_language.voice_jailbreak_attacks_scenario."
         "VoiceJailbreakAttacksScenario",
         args={"subset": subset},
     )
-    adapter_spec = _get_generation_adapter_spec(max_tokens=1024)
-    metric_specs: List[MetricSpec] = get_generative_harms_metric_specs(
-        include_basic_metrics=True, include_generative_harms_metrics=True
+    adapter_spec = _get_generation_adapter_spec(
+        instructions="Listen to the audio and respond according to its instructions.",
+        max_tokens=1024,
     )
+    metric_specs: List[MetricSpec] = _get_gpt4_refusal_metric_specs(
+        num_respondents=num_respondents,
+        max_tokens=200,
+    ) + get_generative_harms_metric_specs(include_basic_metrics=True, include_generative_harms_metrics=True)
 
     run_spec_name: str = "voice_jailbreak_attacks"
     return RunSpec(
@@ -258,19 +274,20 @@ def get_covost2_run_spec(source_language: str, target_language: str) -> RunSpec:
 
 
 @run_spec_function("vocal_sound")
-def get_vocal_sound_run_spec() -> RunSpec:
+def get_vocal_sound_run_spec(sound: str) -> RunSpec:
     scenario_spec = ScenarioSpec(
         class_name="helm.benchmark.scenarios.audio_language.vocal_sound_scenario.VocalSoundScenario",
+        args={"sound": sound},
     )
     adapter_spec = _get_generation_adapter_spec(
         instructions="Listen to the audio and classify the speaker behavior. Choose only from these options:"
         '"Cough", "Laughter", "Sigh", "Sneeze", "Sniff", or "Throat clearing". Respond with just the behavior.',
         max_tokens=5,
     )
-    metric_specs = get_exact_match_metric_specs() + get_classification_metric_specs()
+    metric_specs = get_exact_match_metric_specs()
     run_spec_name: str = "vocal_sound"
     return RunSpec(
-        name=run_spec_name,
+        name=f"{run_spec_name}:sound={sound}",
         scenario_spec=scenario_spec,
         adapter_spec=adapter_spec,
         metric_specs=metric_specs,
@@ -501,13 +518,20 @@ def get_air_bench_chat_run_spec(subject: str, num_respondents: int = 1) -> RunSp
         )
         + _get_open_ended_generation_metric_specs()
     )
+
     run_spec_name: str = "air_bench_chat"
+    group_name: str = run_spec_name
+    if subject in ["mix", "speech"]:
+        group_name += "_reasoning"
+    elif subject in ["sound", "music"]:
+        group_name += "_knowledge"
+
     return RunSpec(
         name=f"{run_spec_name}:subject={subject}",
         scenario_spec=scenario_spec,
         adapter_spec=adapter_spec,
         metric_specs=metric_specs,
-        groups=[run_spec_name],
+        groups=[group_name],
     )
 
 
