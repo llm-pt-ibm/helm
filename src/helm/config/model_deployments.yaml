@@ -199,17 +199,6 @@ model_deployments:
     client_spec:
       class_name: "helm.clients.stanfordhealthcare_shc_openai_client.StanfordHealthCareSHCOpenAIClient"
       deployment: gpt-4-turbo-2024-04-09
-# url = https://apim.stanfordhealthcare.org/openai-eastus2/deployments/gpt-4.1/chat/completions?api-version=2025-01-01-preview
-# url = https://apim.stanfordhealthcare.org/openai-eastus2/deployments/o3-mini/chat/completions?api-version=2024-12-01-preview
-
-#   - name: stanfordhealthcare/gpt-4.1-2025-04-14
-#     model_name: openai/gpt-4.1-2025-04-14
-#     tokenizer_name: openai/o200k_base
-#     max_sequence_length: 1047576
-#     client_spec:
-#       class_name: "helm.clients.stanfordhealthcare_openai_client.StanfordHealthCareOpenAIClient"
-#       args:
-#         base_url: "{endpoint}/llama4-maverick/v1"
 
   # Adobe
   - name: adobe/giga-gan
@@ -2489,6 +2478,30 @@ model_deployments:
     client_spec:
       class_name: "helm.clients.openai_client.OpenAIClient"
 
+  - name: openai/o3-2025-04-16-low-reasoning-effort
+    model_name: openai/o3-2025-04-16-low-reasoning-effort
+    tokenizer_name: openai/cl100k_base
+    # Source: https://platform.openai.com/docs/models/o3
+    max_sequence_length: 200000
+    # TODO: max_output_tokens: 100000
+    client_spec:
+      class_name: "helm.clients.openai_client.OpenAIClient"
+      args:
+        openai_model_name: o3-2025-04-16
+        reasoning_effort: low
+
+  - name: openai/o3-2025-04-16-high-reasoning-effort
+    model_name: openai/o3-2025-04-16-high-reasoning-effort
+    tokenizer_name: openai/cl100k_base
+    # Source: https://platform.openai.com/docs/models/o3
+    max_sequence_length: 200000
+    # TODO: max_output_tokens: 100000
+    client_spec:
+      class_name: "helm.clients.openai_client.OpenAIClient"
+      args:
+        openai_model_name: o3-2025-04-16
+        reasoning_effort: high
+
   - name: openai/o4-mini-2025-04-16
     model_name: openai/o4-mini-2025-04-16
     tokenizer_name: openai/cl100k_base
@@ -2497,6 +2510,31 @@ model_deployments:
     # TODO: max_output_tokens: 100000
     client_spec:
       class_name: "helm.clients.openai_client.OpenAIClient"
+
+  - name: openai/o4-mini-2025-04-16-low-reasoning-effort
+    model_name: openai/o4-mini-2025-04-16-low-reasoning-effort
+    tokenizer_name: openai/cl100k_base
+    # Source: https://platform.openai.com/docs/models/o4-mini
+    max_sequence_length: 200000
+    # TODO: max_output_tokens: 100000
+    client_spec:
+      class_name: "helm.clients.openai_client.OpenAIClient"
+      args:
+        openai_model_name: o4-mini-2025-04-16
+        reasoning_effort: low
+
+
+  - name: openai/o4-mini-2025-04-16-high-reasoning-effort
+    model_name: openai/o4-mini-2025-04-16-high-reasoning-effort
+    tokenizer_name: openai/cl100k_base
+    # Source: https://platform.openai.com/docs/models/o4-mini
+    max_sequence_length: 200000
+    # TODO: max_output_tokens: 100000
+    client_spec:
+      class_name: "helm.clients.openai_client.OpenAIClient"
+      args:
+        openai_model_name: o4-mini-2025-04-16
+        reasoning_effort: high
 
   ## Text Similarity Models
   # OpenAI similarity embedding models: https://beta.openai.com/docs/guides/embeddings
@@ -3758,29 +3796,97 @@ model_deployments:
         args:
             pretrained_model_name_or_path: deepseek-ai/deepseek-coder-6.7b-instruct
 
-  - name: "deepseek-ai/deepseek-coder-6.7b-instruct"
-    model_name: "deepseek-ai/deepseek-coder-6.7b-instruct"
-    tokenizer_name: "openai/o200k_base"
-    max_sequence_length: 8192
+# IBM WatsonX
+  - name: ibm/llama-3.3-70b-instruct
+    model_name: meta/llama-3.3-70b-instruct
+    tokenizer_name: meta/llama-3.3-70b-instruct
+    max_sequence_length: 128000
     client_spec:
-      class_name: "helm.clients.deepseek_power10_client.DirectSSHDeepSeekClient"
-      
-# Granite3-Code-Instruct-128K
-  - name: huggingface/granite-8b-code-instruct-128k
-    model_name: ibm-granite/granite-8b-code-instruct-128k
-    tokenizer_name: ibm-granite/granite-8b-code-instruct-128k
-    max_sequence_length: 8192
-    client_spec:
-        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
-        args:
-            pretrained_model_name_or_path: ibm-granite/granite-8b-code-instruct-128k
+      class_name: "helm.clients.ibm_client.IbmChatClient"
+      args:
+        watsonx_model_name: meta-llama/llama-3-3-70b-instruct
+        region: Dallas
 
-# Granite3-Code-Base-128K
-  - name: huggingface/granite-8b-code-base-128k
-    model_name: ibm-granite/granite-8b-code-base-128k
-    tokenizer_name: ibm-granite/granite-8b-code-base-128k
-    max_sequence_length: 8192
+  - name: ibm/granite-3-2b-instruct
+    model_name: ibm/granite-3.1-2b-instruct
+    tokenizer_name: ibm-granite/granite-3.1-2b-instruct
+    max_sequence_length: 128000
     client_spec:
-        class_name: "helm.clients.huggingface_client.HuggingFaceClient"
-        args:
-            pretrained_model_name_or_path: ibm-granite/granite-8b-code-base-128k
+      class_name: "helm.clients.ibm_client.IbmChatClient"
+      args:
+        watsonx_model_name: ibm/granite-3-2b-instruct
+        region: Dallas
+
+
+#
+  - name: ibm/granite-3-8b-instruct
+    model_name: ibm/granite-3.1-8b-instruct
+    tokenizer_name: ibm-granite/granite-3.1-8b-instruct
+    max_sequence_length: 128000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmChatClient"
+      args:
+        watsonx_model_name: ibm/granite-3-8b-instruct
+        region: Dallas
+#
+
+#
+  - name: ibm/granite-13b-instruct-v2
+    model_name: ibm/granite-13b-instruct-v2
+    tokenizer_name: EleutherAI/gpt-neox-20b
+    max_sequence_length: 128000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmTextClient"
+      args:
+        watsonx_model_name: ibm/granite-13b-instruct-v2
+        region: Dallas
+#
+  - name: ibm/granite-20b-code-instruct-8k
+    model_name: ibm/granite-20b-code-instruct-8k
+    tokenizer_name: ibm-granite/granite-20b-code-instruct-8k
+    max_sequence_length: 128000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmChatClient"
+      args:
+        watsonx_model_name: ibm/granite-20b-code-instruct
+        region: Dallas
+#
+  - name: ibm/granite-34b-code-instruct
+    model_name: ibm/granite-34b-code-instruct
+    tokenizer_name: ibm-granite/granite-34b-code-instruct-8k
+    max_sequence_length: 128000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmChatClient"
+      args:
+        watsonx_model_name: ibm/granite-34b-code-instruct
+        region: Dallas
+#
+  - name: ibm/granite-3b-code-instruct
+    model_name: ibm/granite-3b-code-instruct
+    tokenizer_name: ibm-granite/granite-3b-code-instruct-128k
+    max_sequence_length: 128000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmTextClient"
+      args:
+        watsonx_model_name: ibm/granite-3b-code-instruct
+        region: Dallas
+#
+  - name: ibm/granite-8b-code-instruct
+    model_name: ibm/granite-8b-code-instruct
+    tokenizer_name: ibm-granite/granite-8b-code-instruct-128k
+    max_sequence_length: 128000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmTextClient"
+      args:
+        watsonx_model_name: ibm/granite-8b-code-instruct
+        region: Dallas
+
+  - name: ibm/mixtral-8x7b-instruct-v0:1
+    model_name: mistralai/mixtral-8x7b-instruct-v0:1
+    tokenizer_name: huggingface/gpt2
+    max_sequence_length: 4000
+    client_spec:
+      class_name: "helm.clients.ibm_client.IbmChatClient"
+      args:
+        watsonx_model_name: mistralai/mixtral-8x7b-instruct-v01
+        region: Dallas

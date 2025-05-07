@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'contamination_checking_method'
     paths:
       - 'helm-frontend/**'
       - '.github/workflows/build-frontend.yml'
