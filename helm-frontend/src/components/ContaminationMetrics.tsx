@@ -39,7 +39,7 @@ export default function ContaminationMetrics({ runName, suite }: Props) {
     return (
       <div className="alert alert-info">
         <div>
-          <span>No contamination metrics found for this run.</span>
+          <span>Contains no execution for this execution.</span>
         </div>
       </div>
     );
