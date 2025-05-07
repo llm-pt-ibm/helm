@@ -137,6 +137,7 @@ def downsample_eval_instances(
 
     return all_train_instances + selected_eval_instances
 
+
 class Runner:
     """
     The main entry point for running the entire benchmark.  Mostly just
@@ -295,18 +296,19 @@ class Runner:
 
         # Annotate (post-process the results)
         scenario_state = self.annotator_executor.execute(scenario_state)
-        
+
+        result_data = {"name": {"name": "contamination", "split": "test"}}
         # Contamination assessment stage
         if self.contamination != []:
             scenario_state_copy = copy.deepcopy(scenario_state)
             contamination_evaluator = ContaminationEvaluator()
-            
+
             result = contamination_evaluator.evaluate(
-                executor = self.executor,
-                method=self.contamination[0], 
-                benchmark_path=input_instances_output_path,  
+                executor=self.executor,
+                method=self.contamination[0],
+                benchmark_path=input_instances_output_path,
                 scenario_state=scenario_state_copy,
-                language=self.contamination[1]
+                language=self.contamination[1],
             )
 
             model_full_name = run_spec.name
@@ -317,22 +319,9 @@ class Runner:
             else:
                 model_name = model_full_name
 
-            result_data = {
-                "method": self.contamination[0],
-                "model": model_name,
-                "benchmark": os.path.basename(input_instances_output_path),
-                "result": result
-            }
-            
-            # Path and name of the file where the result will be saved
-            output_path = "src/helm/contamination/contamination.json"
-            
-            # Ensure the directory exists
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            
-            # Save the result to the file as JSON
-            with open(output_path, "w", encoding="utf-8") as file:
-                json.dump(result_data, file, indent=4)
+            result_data["method"] = self.contamination[0]
+            for key, value in result.items():
+                result_data[key] = value
 
         # Apply the metrics
         # When performing a dry run, only estimate the number of tokens instead
@@ -353,7 +342,8 @@ class Runner:
                     )
                     stats.extend(metric_result.aggregated_stats)
                     per_instance_stats.extend(metric_result.per_instance_stats)
-        
+        stats_list = [asdict_without_nones(stat) for stat in remove_stats_nans(stats)]
+        final_list = stats_list + [result_data]
         # Check that there aren't duplicate `Stat`s
         # Note: doesn't catch near misses.
         metric_counts: typing.Counter[MetricName] = Counter([stat.name for stat in stats])
@@ -367,7 +357,7 @@ class Runner:
         if self.skip_instances:
             hlog("skip_instances was True. Skipping writing results out.")
             return
-        
+
         # Output benchmarking information and results to files
         write(os.path.join(run_path, "run_spec.json"), json.dumps(asdict_without_nones(run_spec), indent=2))
 
@@ -376,10 +366,9 @@ class Runner:
 
         # Write scenario state
         write(os.path.join(run_path, "scenario_state.json"), json.dumps(asdict_without_nones(scenario_state), indent=2))
-
         write(
             os.path.join(run_path, "stats.json"),
-            json.dumps([asdict_without_nones(stat) for stat in remove_stats_nans(stats)], indent=2),
+            json.dumps(final_list, indent=2),
         )
         write(
             os.path.join(run_path, "per_instance_stats.json"),

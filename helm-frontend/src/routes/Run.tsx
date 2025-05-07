@@ -24,6 +24,7 @@ import getRunsToRunSuites from "@/services/getRunsToRunSuites";
 import getSuiteForRun from "@/services/getSuiteForRun";
 import Instances from "@/components/Instances";
 import RunMetrics from "@/components/RunMetrics";
+import ContaminationMetrics from "@/components/ContaminationMetrics";
 import UserAgreement from "@/components/UserAgreement";
 import isScenarioEncrypted from "@/utils/isScenarioEncrypted";
 
@@ -97,6 +98,39 @@ export default function Run() {
     return <Loading />;
   }
 
+  const renderContent = () => {
+    if (activeTab === 0) {
+      if (isScenarioEncrypted(runName) && !userAgreed) {
+        return (
+          <UserAgreement
+            runName={runName}
+            onAgree={() => setUserAgreed(true)}
+          />
+        );
+      }
+      return (
+        <Instances
+          key={userAgreed ? "instances-agreed" : "instances-not-agreed"}
+          runName={runName}
+          suite={runSuite}
+          metricFieldMap={metricFieldMap}
+          userAgreed={userAgreed}
+        />
+      );
+    } else if (activeTab === 1) {
+      return (
+        <RunMetrics
+          runName={runName}
+          suite={runSuite}
+          metricFieldMap={metricFieldMap}
+        />
+      );
+    } else if (activeTab === 2) {
+      return <ContaminationMetrics runName={runName} suite={runSuite} />;
+    }
+    return null;
+  };
+
   return (
     <>
       <div className="flex justify-between gap-8 mb-12">
@@ -116,7 +150,7 @@ export default function Run() {
           </h3>
           <div className="mt-2 flex gap-2">
             {scenario.tags.map((tag) => (
-              <Badge size="xs" color="gray">
+              <Badge size="xs" color="gray" key={tag}>
                 <span className="text text-md">{tag}</span>
               </Badge>
             ))}
@@ -125,7 +159,7 @@ export default function Run() {
       </div>
       <Card>
         <div className="flex justify-between">
-          <h3 className="text-lg mb-1">Adapter Specification</h3>
+          <h3 className="text-lg mb-1">Adapter</h3>
           <div className="flex gap-2">
             <ArrowDownTrayIcon className="w-6 h-6 mr-1 text text-primary" />
             <a
@@ -149,7 +183,7 @@ export default function Run() {
         <div>
           <List className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8">
             {Object.entries(runSpec.adapter_spec).map(([key, value], idx) => (
-              <ListItem className={idx < 3 ? "!border-0" : ""}>
+              <ListItem key={key} className={idx < 3 ? "!border-0" : ""}>
                 <strong
                   className="mr-1"
                   title={
@@ -180,28 +214,17 @@ export default function Run() {
           >
             All metrics
           </Tab>
+          <Tab
+            size="lg"
+            active={activeTab === 2}
+            onClick={() => setActiveTab(2)}
+          >
+            Contamination
+          </Tab>
         </Tabs>
       </div>
 
-      {activeTab === 0 && isScenarioEncrypted(runName) && !userAgreed && (
-        <UserAgreement runName={runName} onAgree={() => setUserAgreed(true)} />
-      )}
-
-      {activeTab === 0 ? (
-        <Instances
-          key={userAgreed ? "instances-agreed" : "instances-not-agreed"}
-          runName={runName}
-          suite={runSuite}
-          metricFieldMap={metricFieldMap}
-          userAgreed={userAgreed} // Pass the boolean to Instances
-        />
-      ) : (
-        <RunMetrics
-          runName={runName}
-          suite={runSuite}
-          metricFieldMap={metricFieldMap}
-        />
-      )}
+      {renderContent()}
     </>
   );
 }

@@ -9,107 +9,92 @@ from helm.common.hierarchical_logger import hlog, htrack_block
 from nltk.tokenize import sent_tokenize
 from .utils_contamination import UtilsContamination
 
+
 class TSGuessingQuestionMultiChoiceContaminationEvaluator:
     """
     Implements question-based multichoice guessing test for contamination detection.
     """
-    
+
     def __init__(self):
         self.language = "en"
         self.translator = Translator()
         self.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-    def evaluate(
-        self,
-        executor,
-        benchmark_path: str,
-        scenario_state,
-        language: str 
-    ) -> float:
+    def evaluate(self, executor, benchmark_path: str, scenario_state, language: str) -> float:
         """
         Evaluate contamination using the TS-Guessing question-multichoice approach.
         """
-        return asyncio.run(self._evaluate_async(
-            executor, 
-            benchmark_path, 
-            scenario_state, 
-            language
-        ))
+        return asyncio.run(self._evaluate_async(executor, benchmark_path, scenario_state, language))
 
-    async def _evaluate_async(
-        self,
-        executor,
-        benchmark_path: str,
-        scenario_state,
-        language: str 
-    ) -> float:
+    async def _evaluate_async(self, executor, benchmark_path: str, scenario_state, language: str) -> float:
         self.language = language
         with htrack_block("TS-Guessing (question-multichoice) contamination evaluation"):
-            
+
             eval_data_name = os.path.basename(benchmark_path).split(":")[0]
 
-            if not hasattr(scenario_state, "adapter_spec") or not hasattr(scenario_state.adapter_spec, "method") or scenario_state.adapter_spec.method != "multiple_choice_joint":
-                hlog(f"The selected benchmark \"{eval_data_name}\" does not qualify for the verification strategy TS-Guessing question-multichoice")
+            if (
+                not hasattr(scenario_state, "adapter_spec")
+                or not hasattr(scenario_state.adapter_spec, "method")
+                or scenario_state.adapter_spec.method != "multiple_choice_joint"
+            ):
+                hlog(
+                    f'The selected benchmark "{eval_data_name}" does not qualify for the verification strategy TS-Guessing question-multichoice'
+                )
                 return 0.0
 
             # Filter and prepare data
             data_points = self._filter_data(scenario_state)
             hlog(f"Filtered to {len(data_points)} data points")
 
-
             p = np.random.permutation(len(data_points))
             data_points = [data_points[p[i]] for i in range(len(data_points))]
 
             answers, wrong_letters = [], []
             part_one, part_two, part_three, part_four, part_five, part_six = await self._prompt_default()
-            
-            # Build prompts and update scenario_state             
-            for i, request_state in enumerate(scenario_state.request_states):                 
-                if i < len(data_points):                     
-                    data_point = data_points[i]                     
-                    try:                         
-                        prompt, answer, wrong_letter = self._build_prompt(data_point, eval_data_name, part_one, part_two, part_three, part_four, part_five, part_six)                         
-                        if prompt != "failed":                             
-                            new_input = replace(request_state.instance.input, text=prompt)                             
-                            new_instance = replace(request_state.instance, input=new_input)                             
-                            new_request = replace(                                 
-                                request_state.request,                                 
-                                prompt=prompt,                                 
-                                max_tokens=100                                                   
-                            )
-                            
+
+            # Build prompts and update scenario_state
+            for i, request_state in enumerate(scenario_state.request_states):
+                if i < len(data_points):
+                    data_point = data_points[i]
+                    try:
+                        prompt, answer, wrong_letter = self._build_prompt(
+                            data_point, eval_data_name, part_one, part_two, part_three, part_four, part_five, part_six
+                        )
+                        if prompt != "failed":
+                            new_input = replace(request_state.instance.input, text=prompt)
+                            new_instance = replace(request_state.instance, input=new_input)
+                            new_request = replace(request_state.request, prompt=prompt, max_tokens=100)
+
                             # Update adapter_spec
-                            if hasattr(scenario_state, "adapter_spec"):                                             
-                                try:                                                 
-                                    new_adapter_spec = replace(                                                     
-                                        scenario_state.adapter_spec,                                                      
-                                        method='generation',
-                                        instructions='',
-                                        input_prefix='',                                                      
-                                        output_prefix='Answer: ',                                                      
-                                        max_tokens=100                                                                                                 
-                                    )                                                 
-                                    scenario_state.adapter_spec = new_adapter_spec                                             
-                                except Exception as e:                                                 
+                            if hasattr(scenario_state, "adapter_spec"):
+                                try:
+                                    new_adapter_spec = replace(
+                                        scenario_state.adapter_spec,
+                                        method="generation",
+                                        instructions="",
+                                        input_prefix="",
+                                        output_prefix="Answer: ",
+                                        max_tokens=100,
+                                    )
+                                    scenario_state.adapter_spec = new_adapter_spec
+                                except Exception as e:
                                     hlog(f"Error updating adapter_spec: {e}")
-                            
-                            scenario_state.request_states[i] = replace(                                 
-                                request_state,                                 
-                                instance=new_instance,                                 
-                                request=new_request                             
-                            )                             
-                            answers.append(answer)                             
-                            wrong_letters.append(wrong_letter)                         
-                        else:                             
-                            hlog(f"Failed to build prompt for data point {i}")                             
-                            answers.append("")                             
-                            wrong_letters.append("")                     
-                    except Exception as e:                         
-                        hlog(f"Error building prompt for data point {i}: {e}")                         
-                        answers.append("")                         
-                        wrong_letters.append("")                 
-                else:                     
-                    answers.append("")                     
+
+                            scenario_state.request_states[i] = replace(
+                                request_state, instance=new_instance, request=new_request
+                            )
+                            answers.append(answer)
+                            wrong_letters.append(wrong_letter)
+                        else:
+                            hlog(f"Failed to build prompt for data point {i}")
+                            answers.append("")
+                            wrong_letters.append("")
+                    except Exception as e:
+                        hlog(f"Error building prompt for data point {i}: {e}")
+                        answers.append("")
+                        wrong_letters.append("")
+                else:
+                    answers.append("")
                     wrong_letters.append("")
 
             try:
@@ -123,14 +108,21 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             for i, rs in enumerate(response_scenario_state.request_states):
                 if i < len(answers) and answers[i] != "":
                     try:
-                        if hasattr(rs, "result") and rs.result is not None and hasattr(rs.result, "completions") and rs.result.completions:
+                        if (
+                            hasattr(rs, "result")
+                            and rs.result is not None
+                            and hasattr(rs.result, "completions")
+                            and rs.result.completions
+                        ):
                             response_text = rs.result.completions[0].text.strip()
                             processed_response = self._process_response(response_text, wrong_letters[i])
-                            results.append({
-                                "id": f"instance_{i}",
-                                "answer": answers[i].lower(),
-                                "response": processed_response.lower()
-                            })
+                            results.append(
+                                {
+                                    "id": f"instance_{i}",
+                                    "answer": answers[i].lower(),
+                                    "response": processed_response.lower(),
+                                }
+                            )
                     except Exception as e:
                         hlog(f"Error processing result for instance {i}: {e}")
             if not results:
@@ -141,13 +133,12 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             responses_list = [x["response"] for x in results]
 
             # Metrics
-            exact_match = sum(
-                1 for i in range(len(responses_list))
-                if responses_list[i] == answers_list[i]
-            ) / len(responses_list)
+            exact_match = sum(1 for i in range(len(responses_list)) if responses_list[i] == answers_list[i]) / len(
+                responses_list
+            )
 
             try:
-                scorer = rouge_scorer.RougeScorer(['rougeLsum'], use_stemmer=True)
+                scorer = rouge_scorer.RougeScorer(["rougeLsum"], use_stemmer=True)
                 rouge_scores = []
                 for i in range(len(responses_list)):
                     try:
@@ -155,7 +146,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         rouge_scores.append(score)
                     except Exception as e:
                         hlog(f"Error calculating ROUGE for instance {i}: {e}")
-                
+
                 rouge_l = np.mean(rouge_scores) if rouge_scores else 0.0
             except Exception as e:
                 hlog(f"Error calculating ROUGE metrics: {e}")
@@ -171,20 +162,22 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 question = UtilsContamination.get_question_text(rs.instance)
                 choices = UtilsContamination.get_choices(rs.instance)
                 answer_index = UtilsContamination.get_answer_index(rs.instance)
-                
+
                 # Only include valid data points
                 if choices and isinstance(answer_index, int) and 0 <= answer_index < len(choices):
-                    data_points.append({
-                        "id": getattr(rs.instance, "id", f"instance_{len(data_points)}"),
-                        "text": question,
-                        "question": question,
-                        "choices": choices,
-                        "answer_index": answer_index
-                    })
+                    data_points.append(
+                        {
+                            "id": getattr(rs.instance, "id", f"instance_{len(data_points)}"),
+                            "text": question,
+                            "question": question,
+                            "choices": choices,
+                            "answer_index": answer_index,
+                        }
+                    )
             except Exception as e:
                 hlog(f"Error filtering data point: {e}")
         return data_points
-    
+
     async def _prompt_default(self):
         """Get default prompt parts with translation support."""
         part_one = "Please fill in the __MASK_TOKEN__ in option"
@@ -203,10 +196,10 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     self._safe_translate(part_three),
                     self._safe_translate(part_four),
                     self._safe_translate(part_five),
-                    self._safe_translate(part_six)
+                    self._safe_translate(part_six),
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 # Handle results safely
                 translated_parts = []
                 for i, result in enumerate(results):
@@ -215,22 +208,22 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         translated_parts.append([part_one, part_two, part_three, part_four, part_five, part_six][i])
                     else:
                         translated_parts.append(result)
-                
+
                 return tuple(translated_parts)
         except Exception as e:
             hlog(f"Error in translation: {e}")
-        
+
         return part_one, part_two, part_three, part_four, part_five, part_six
-    
+
     async def _safe_translate(self, text):
         """Safely translate text with error handling."""
         try:
-            result = await self.translator.translate(text, src='en', dest=self.language)
+            result = await self.translator.translate(text, src="en", dest=self.language)
             return result.text
         except Exception as e:
             hlog(f"Translation error: {e}")
             raise e
-        
+
     def _build_prompt(self, example, eval_data_name, part_one, part_two, part_three, part_four, part_five, part_six):
         """Build a multiple-choice prompt for TS-Guessing."""
         try:
@@ -238,7 +231,13 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             choices = example.get("choices", [])
             answer_index = example.get("answer_index", -1)
 
-            if not text or not choices or not isinstance(answer_index, int) or answer_index < 0 or answer_index >= len(choices):
+            if (
+                not text
+                or not choices
+                or not isinstance(answer_index, int)
+                or answer_index < 0
+                or answer_index >= len(choices)
+            ):
                 return "failed", "", ""
 
             answer = choices[answer_index]
@@ -247,32 +246,32 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 return "failed", "", ""
 
             wrong_index = np.random.choice(wrong_indices)
-            
+
             # Ensure we don't exceed alphabet length
             if wrong_index >= len(self.alphabet):
                 hlog(f"Warning: wrong_index {wrong_index} exceeds alphabet length {len(self.alphabet)}")
                 wrong_index = wrong_index % len(self.alphabet)
-                
+
             wrong_letter = self.alphabet[wrong_index]
-        
+
             masked_part_one = part_one.replace("__mask_token__", "[MASK]")
 
             # Build the final prompt
             prompt = f"{masked_part_one} {wrong_letter} {part_two}\n\n{part_three}\n\n{part_four} {text}\n{part_five}"
-            
+
             for i, choice in enumerate(choices):
                 if i >= len(self.alphabet):
                     hlog(f"Warning: choice index {i} exceeds alphabet length {len(self.alphabet)}")
                     continue
-                    
+
                 letter = self.alphabet[i]
                 content = "[MASK]" if i == wrong_index else choice
                 prompt += f"\n{letter}: {content}"
-                
+
             prompt += f"\n\n{part_six}"
 
             return prompt, answer, wrong_letter
-            
+
         except Exception as e:
             hlog(f"Error building prompt: {e}")
             return "failed", "", ""
@@ -282,7 +281,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         try:
             if not response:
                 return ""
-                
+
             # Safely check for the wrong_letter in response
             symbol = wrong_letter + ":"
             if symbol in response:
@@ -298,14 +297,14 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             except Exception as e:
                 hlog(f"Sentence tokenization failed: {e}")
                 # Fallback to simple delimiter-based extraction
-                for delimiter in ['.', '!', '?']:
+                for delimiter in [".", "!", "?"]:
                     if delimiter in response:
                         response = response.split(delimiter)[0] + delimiter
                         break
 
             # Clean up the response
             return response.strip().replace("[", "").replace("]", "").replace("MASK", "")
-            
+
         except Exception as e:
             hlog(f"Error processing response: {e}")
             return ""

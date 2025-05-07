@@ -8,52 +8,35 @@ from dataclasses import replace
 
 from helm.common.hierarchical_logger import hlog, htrack_block
 
+
 class TSGuessingQuestionBasedContaminationEvaluator:
     """
     Implementation of question-based guessing test for contamination detection.
     """
-    
+
     def __init__(self):
         self.language = "en"
         self.translator = Translator()
-        
-    def evaluate(
-        self,
-        executor,
-        benchmark_path: str,
-        scenario_state,
-        language: str 
-    ) -> float:
+
+    def evaluate(self, executor, benchmark_path: str, scenario_state, language: str) -> float:
         """
         Evaluate contamination using the TS guessing question-based approach.
         """
-        return asyncio.run(self._evaluate_async(
-            executor, 
-            benchmark_path, 
-            scenario_state, 
-            language
-        ))
-        
-    async def _evaluate_async(
-        self,
-        executor,
-        benchmark_path: str,
-        scenario_state,
-        language: str 
-    ) -> float:
+        return asyncio.run(self._evaluate_async(executor, benchmark_path, scenario_state, language))
+
+    async def _evaluate_async(self, executor, benchmark_path: str, scenario_state, language: str) -> float:
         try:
             self.language = language
             with htrack_block("ts_guessing_question_based contamination evaluation"):
 
                 # Get instances from scenario state
-                instances = [rs.instance for rs in scenario_state.request_states 
-                            if hasattr(rs, "instance")]
-                
+                instances = [rs.instance for rs in scenario_state.request_states if hasattr(rs, "instance")]
+
                 if not instances:
                     hlog("No valid instances found in scenario state")
                     return {"exact_match": 0.0}
-                    
-                eval_data_name = os.path.basename(benchmark_path).split(':')[0]
+
+                eval_data_name = os.path.basename(benchmark_path).split(":")[0]
 
                 # Initialize tagger
                 try:
@@ -65,7 +48,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 # Filter and prepare data
                 data_points = self._filter_data(instances, eval_data_name)
                 hlog(f"Left with {len(data_points)} data points after filtering")
-                
+
                 if not data_points:
                     hlog("No data points remained after filtering")
                     return {"exact_match": 0.0}
@@ -73,7 +56,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 # Modify prompt and update directly in scenario_state
                 masked_words = []
                 part_one, part_two, part_four = await self._prompt_default()
-                
+
                 for i, request_state in enumerate(scenario_state.request_states):
                     if i < len(data_points):
                         data_point = data_points[i]
@@ -87,32 +70,30 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                 if hasattr(request_state, "instance") and hasattr(request_state.instance, "input"):
                                     new_input = replace(request_state.instance.input, text=prompt)
                                     new_instance = replace(request_state.instance, input=new_input)
-                                    
+
                                     # Safely modify the request prompt
                                     if hasattr(request_state, "request"):
-                                        new_request = replace(
-                                            request_state.request,
-                                            prompt=prompt,
-                                            max_tokens=15
-                                        )
-                                        
+                                        new_request = replace(request_state.request, prompt=prompt, max_tokens=15)
+
                                         # Update instructions in adapter_spec if it exists
                                         if hasattr(scenario_state, "adapter_spec"):
                                             try:
                                                 new_adapter_spec = replace(
                                                     scenario_state.adapter_spec,
-                                                    method='generation',
-                                                    instructions='',
-                                                    input_prefix='', 
-                                                    output_prefix='Answer: ', 
-                                                    max_tokens=15
+                                                    method="generation",
+                                                    instructions="",
+                                                    input_prefix="",
+                                                    output_prefix="Answer: ",
+                                                    max_tokens=15,
                                                 )
                                                 scenario_state.adapter_spec = new_adapter_spec
                                             except Exception as e:
                                                 hlog(f"Error updating adapter_spec: {e}")
-                                        
+
                                         # Creates new request_state
-                                        novo_request_state = replace(request_state, instance=new_instance, request=new_request)
+                                        novo_request_state = replace(
+                                            request_state, instance=new_instance, request=new_request
+                                        )
                                         scenario_state.request_states[i] = novo_request_state
                                         masked_words.append(masked_word)
                                     else:
@@ -135,29 +116,36 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 except Exception as e:
                     hlog(f"Error executing model queries: {e}")
                     return {"exact_match": 0.0}
-                
+
                 # Process results
                 results = []
                 for i, rs in enumerate(response_scenario_state.request_states):
                     if i < len(masked_words):
                         try:
-                            if (hasattr(rs, 'result') and rs.result is not None and 
-                                hasattr(rs.result, 'completions') and rs.result.completions):
+                            if (
+                                hasattr(rs, "result")
+                                and rs.result is not None
+                                and hasattr(rs.result, "completions")
+                                and rs.result.completions
+                            ):
 
                                 full_response = rs.result.completions[0].text.strip().lower()
-                                
+
                                 # Safely extract first word
                                 response_words = full_response.split()
-                                first_word = response_words[0].strip('"""\'\'.,;!?¿¡#').lower() if response_words else ""
-                                
-                                results.append({
-                                    "id": f"instance_{i}",
-                                    "masked_word": masked_words[i].lower(),
-                                    "response": first_word
-                                })
+                                first_word = (
+                                    response_words[0].strip('"""\'\'.,;!?¿¡#').lower() if response_words else ""
+                                )
+
+                                results.append(
+                                    {
+                                        "id": f"instance_{i}",
+                                        "masked_word": masked_words[i].lower(),
+                                        "response": first_word,
+                                    }
+                                )
                         except Exception as e:
                             hlog(f"Error processing result for instance {i}: {e}")
-
 
                 # Calculate metrics
                 if results:
@@ -165,12 +153,12 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 else:
                     hlog("No valid results to calculate exact match")
                     exact_match = 0.0
-                 
+
                 return {"exact_match": exact_match}
         except Exception as e:
             hlog(f"Unhandled error in _evaluate_async: {e}")
             return {"exact_match": 0.0}
-    
+
     def _get_spacy_tagger(self):
         """Initialize and return a spaCy language model for POS tagging."""
         try:
@@ -182,7 +170,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 return spacy.load("en")
             except:
                 raise Exception("Could not load any spaCy model")
-    
+
     def _filter_data(self, eval_data, eval_data_name):
         """Filter data points"""
         data_points = []
@@ -193,7 +181,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         x_dict = self._instance_to_dict(x)
                         if "text" not in x_dict or not x_dict["text"]:
                             continue
-                            
+
                         text = x_dict.get("text", "")
                         if isinstance(text, str):
                             try:
@@ -203,10 +191,10 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                             except Exception as e:
                                 hlog(f"Error tokenizing text: {e}")
                                 continue
-                                
+
                         # Skip instances with 'Indexical Error' category
-                        if 'Indexical Error' in x_dict.get("category", ""):
-                            continue 
+                        if "Indexical Error" in x_dict.get("category", ""):
+                            continue
 
                         data_points.append(x_dict)
                     except Exception as e:
@@ -216,7 +204,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                     try:
                         # Convert instance to dictionary format
                         x_dict = self._instance_to_dict(x)
-                        
+
                         # Basic validation
                         if "input" in x_dict and hasattr(x_dict["input"], "text") and x_dict["input"].text:
                             data_points.append(x_dict)
@@ -224,9 +212,9 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         hlog(f"Error processing non-truthful_qa data point: {e}")
         except Exception as e:
             hlog(f"Error in _filter_data: {e}")
-                
+
         return data_points
-    
+
     async def _prompt_default(self):
         """Get default prompt parts with translation support."""
         part_one = "Fill in the space marked with"
@@ -239,11 +227,11 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 tasks = [
                     self._safe_translate(part_one),
                     self._safe_translate(part_two),
-                    self._safe_translate(part_four)
+                    self._safe_translate(part_four),
                 ]
-                
+
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 # Handle results safely
                 translated_parts = []
                 for i, result in enumerate(results):
@@ -252,22 +240,22 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         translated_parts.append([part_one, part_two, part_four][i])
                     else:
                         translated_parts.append(result)
-                
+
                 return tuple(translated_parts)
         except Exception as e:
             hlog(f"Error in translation: {e}")
-            
+
         return part_one, part_two, part_four
-    
+
     async def _safe_translate(self, text):
         """Safely translate text with error handling."""
         try:
-            result = await self.translator.translate(text, src='en', dest=self.language)
+            result = await self.translator.translate(text, src="en", dest=self.language)
             return result.text
         except Exception as e:
             hlog(f"Translation error: {e}")
             raise e
-        
+
     def _build_prompt(self, example, tagger, eval_data_name, part_one, part_two, part_four):
         """Build a prompt with a masked word for testing."""
         try:
@@ -279,11 +267,11 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             else:
                 hlog("No text found in example")
                 return "failed", ""
-                
+
             if not text or not isinstance(text, str):
                 hlog("Invalid text content")
                 return "failed", ""
-                
+
             # Process with spaCy
             try:
                 doc = tagger(text)
@@ -292,11 +280,11 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 return "failed", ""
 
             # Select words with relevant POS
-            words = [token for token in doc if token.pos_ in ['NOUN', 'ADJ', 'VERB']]
+            words = [token for token in doc if token.pos_ in ["NOUN", "ADJ", "VERB"]]
             if not words:
                 hlog("No suitable words found in text")
                 return "failed", ""
-            
+
             # Safely select a random word
             try:
                 idx = np.random.randint(len(words))
@@ -319,13 +307,13 @@ class TSGuessingQuestionBasedContaminationEvaluator:
 
             # Build the final prompt
             try:
-                part_three = f"\n\n\"{masked_text}\"\n\n"
+                part_three = f'\n\n"{masked_text}"\n\n'
                 prompt = f"{part_one} [MASK] {part_two}{part_three}{part_four}"
                 return prompt, word.lower()
             except Exception as e:
                 hlog(f"Error building final prompt: {e}")
                 return "failed", ""
-                
+
         except Exception as e:
             hlog(f"Unhandled error in _build_prompt: {e}")
             return "failed", ""
@@ -333,7 +321,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
     def _instance_to_dict(self, instance):
         """Convert a HELM instance to a dictionary format compatible with this evaluator."""
         try:
-            if hasattr(instance, '__dict__'):
+            if hasattr(instance, "__dict__"):
                 result = instance.__dict__.copy()
             else:
                 # Create a dictionary with common fields
@@ -342,7 +330,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                     "input": getattr(instance, "input", None),
                     "references": getattr(instance, "references", []),
                 }
-            
+
             return result
         except Exception as e:
             hlog(f"Error converting instance to dict: {e}")

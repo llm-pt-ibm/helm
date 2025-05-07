@@ -8,18 +8,11 @@ class ContaminationEvaluator:
     Class responsible for evaluating contamination using different strategies
     based on the specified method.
     """
-    
-    def evaluate(
-        self,
-        executor,
-        method: str,
-        benchmark_path: str,
-        scenario_state,
-        language: str
-    ) -> MetricResult:
+
+    def evaluate(self, executor, method: str, benchmark_path: str, scenario_state, language: str) -> MetricResult:
         """
         Evaluate contamination using the specified method.
-        
+
         Args:
             method: The contamination evaluation method to use.
             model_path: Path to the model.
@@ -28,7 +21,7 @@ class ContaminationEvaluator:
             metric_service: Service for computing metrics.
             eval_cache_path: Path for caching evaluation results.
             parallelism: Number of parallel workers.
-            
+
         Returns:
             MetricResult containing contamination evaluation statistics.
         """
@@ -40,11 +33,8 @@ class ContaminationEvaluator:
         # Add more evaluators as needed
         else:
             raise ValueError(f"Unknown contamination evaluation method: {method}")
-        
+
         # Run the selected evaluator
         return evaluator.evaluate(
-            executor=executor,
-            benchmark_path=benchmark_path,
-            scenario_state=scenario_state,
-            language=language
+            executor=executor, benchmark_path=benchmark_path, scenario_state=scenario_state, language=language
         )
