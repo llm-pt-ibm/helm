@@ -3,7 +3,7 @@ import getStatsByName from "@/services/getStatsByName";
 import type Stat from "@/types/Stat";
 import Loading from "@/components/Loading";
 
-const TABLE_COLUMN_NAMES = ["method", "exact_match", "rouge_l"];
+const TABLE_COLUMN_NAMES = ["method", "exact_match", "rouge_L"];
 
 interface Props {
   runName: string;
@@ -62,7 +62,7 @@ export default function ContaminationMetrics({ runName, suite }: Props) {
                 {TABLE_COLUMN_NAMES.map((key) => {
                   if (key === "method") {
                     return <td key={key}>{stat.method}</td>;
-                  } else if (key === "exact_match" || key === "rouge_l") {
+                  } else if (key === "exact_match" || key === "rouge_L") {
                     const value = stat[key];
                     return (
                       <td key={key}>

@@ -152,7 +152,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 hlog(f"Error calculating ROUGE metrics: {e}")
                 rouge_l = 0.0
 
-            return {"exact_match": exact_match, "rouge_l": rouge_l}
+            return {"exact_match": exact_match, "rouge_L": rouge_l}
 
     def _filter_data(self, scenario_state):
         """Extract valid multiple choice instances from scenario state."""
