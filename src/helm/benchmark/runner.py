@@ -339,7 +339,7 @@ class Runner:
             hlog(f"Saving judments locally: {os.path.join(prediction_path, 'judgements.json')}")
 
             # apply the metrics
-            self.apply_accuracy_metric(judgements_file)
+            self.apply_agreement_level_metric(judgements_file)
 
         else:
             # Apply the metrics
@@ -401,6 +401,10 @@ class Runner:
         Extract predictions from the scenario state.
         """
         predictions = []
+
+        print("="*100)
+        print(scenario_state.request_states)
+        print("="*100)
         
         for request_state in scenario_state.request_states:
             instance = request_state.instance
@@ -430,10 +434,10 @@ class Runner:
             
         return predictions
     
-    def apply_accuracy_metric(self, judgements_file_path: str) -> None:
+    def apply_agreement_level_metric(self, judgements_file_path: str) -> None:
         """
-        Calculates accuracy based on the responses of the judging model.
-        Accuracy = number of responses with judgement == 1 / total responses
+        Calculates the agreement level based on the judgments from the judging model.
+        Agreement level = number of responses with judgement == 1 / total responses
         """
         try:
             with open(judgements_file_path, "r", encoding="utf-8") as f:
@@ -443,16 +447,21 @@ class Runner:
             return
 
         if not judgements:
-            hlog("WARNING: No judgments to evaluate accuracy.")
+            hlog("WARNING: No judgments to evaluate agreement level.")
             return
 
         total = len(judgements)
-        correct = sum(1 for j in judgements if j.get("judgement") == 1)
-        accuracy = correct / total if total > 0 else 0.0
+        agreements = sum(1 for j in judgements if j.get("judgement") == 1)
+        agreement_level = agreements / total if total > 0 else 0.0
 
-        hlog(f"LLM-Judge Accuracy: {accuracy:.2%} ({correct}/{total})")
+        hlog(f"LLM-Judge Agreement Level: {agreement_level:.2%} ({agreements}/{total})")
 
-        # Save to file
-        accuracy_path = os.path.join(os.path.dirname(judgements_file_path), "llm_judge_accuracy.json")
-        write(accuracy_path, json.dumps({"accuracy": accuracy, "correct": correct, "total": total}, indent=2))
-        hlog(f"Saved accuracy to {accuracy_path}")
+        # Save the agreement level to file
+        output_path = os.path.join(os.path.dirname(judgements_file_path), "llm_judge_agreement_level.json")
+        write(output_path, json.dumps({
+            "agreement_level": agreement_level,
+            "agreements": agreements,
+            "total_instances": total
+        }, indent=2))
+        hlog(f"Saved agreement level to {output_path}")
+

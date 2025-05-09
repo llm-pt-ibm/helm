@@ -1,10 +1,14 @@
 import json
 import os
+import re
 from typing import List, Dict, Any
 
 from helm.common.request import Request
 from helm.common.authentication import Authentication
 from helm.benchmark.model_deployment_registry import get_default_model_deployment_for_model
+
+from helm.common.request import Request
+from helm.common.authentication import Authentication
 
 class LLMJudger:
     def __init__(self, executor_service, judge_model: str = "openai/gpt2"):
@@ -21,27 +25,22 @@ class LLMJudger:
             input_text = prediction.get("input", "")
             model_response = prediction.get("prediction", "")
 
+            # Criação do prompt para o modelo julgador
             prompt = (
-                    "Você é um avaliador rigoroso de respostas geradas por modelos de linguagem. "
-                    "Sua tarefa é avaliar, de forma objetiva, se a resposta fornecida está correta em relação ao texto de entrada. "
-                    "Corretude significa o quanto a resposta condiz com a intenção e o conteúdo do texto fornecido como entrada.\n\n"
-                    f"Entrada:\n{input_text}\n\n"
-                    f"Resposta do modelo:\n{model_response}\n\n"
-                    "Sua avaliação deve seguir estritamente este formato:\n"
-                    "- Se a resposta estiver correta, escreva: '1 - [explicação breve do porquê ela está correta]'\n"
-                    "- Se a resposta estiver incorreta, escreva: '0 - [explicação breve do porquê ela está incorreta]'\n\n"
-                    "Não adicione nenhum comentário extra além da explicação solicitada."
+                "Você é um avaliador rigoroso de respostas geradas por modelos de linguagem. "
+                "Sua tarefa é avaliar, de forma objetiva, se a resposta fornecida está correta em relação ao texto de entrada. "
+                "Corretude significa o quanto a resposta condiz com a intenção e o conteúdo do texto fornecido como entrada.\n\n"
+                f"Entrada:\n{input_text}\n\n"
+                f"Resposta do modelo:\n{model_response}\n\n"
+                "Agora, com base na entrada e na resposta do modelo, retorne sua avaliação **estritamente** no seguinte formato JSON:\n\n"
+                "{\n"
+                '  "judgement": 1(quando concorda com o modelo principal) ou 0(quando discorda do modelo principal),\n'
+                '  "explanation": "explicação do porquê a resposta está correta ou incorreta"\n'
+                "}\n\n"
+                "Importante: não adicione nenhum comentário, rótulo, explicação fora do JSON. Apenas imprima esse JSON diretamente como resposta."
             )
 
-            # prompt = (
-            #     f"Você é um avaliador. Leia o texto de entrada e a resposta gerada.\n\n"
-            #     f"Entrada: {input_text}\n\n"
-            #     f"Resposta: {model_response}\n\n"
-            #     f"Responda:\n"
-            #     f"- '1 - (explique brevemente porque a resposta está correta)' se a resposta estiver correta;\n"
-            #     f"- '0 - (explique brevemente porque a resposta está incorreta)' se a resposta estiver errada.\n"
-            #     f"Explique em apenas uma frase."
-            # )
+           
 
             # Chamada ao modelo julgador
             judged_value, explanation = self.call_llm(prompt)
@@ -57,14 +56,14 @@ class LLMJudger:
         return judgements
     
     def call_llm(self, prompt: str) -> tuple[int, str]:
-        from helm.common.request import Request
+        
 
         request = Request(
             model=self.judge_model,
-            model_deployment=self._resolve_model_deployment(),  
+            model_deployment=self._resolve_model_deployment(),
             prompt=prompt,
             temperature=0.7,
-            max_tokens=150,
+            max_tokens=300,
         )
 
         result = self.executor_service.make_request(Authentication(""), request)
@@ -76,17 +75,21 @@ class LLMJudger:
         if result.completions:
             text = result.completions[0].text.strip()
 
-            for line in text.splitlines():
-                line = line.strip()
-                if line.startswith("1 -"):
-                    return 1, line[4:].strip()
-                elif line.startswith("0 -"):
-                    return 0, line[4:].strip()
+            # Extract fields from JSON-like output using regular expressions
+            judgement_match = re.search(r'"judgement"\s*:\s*(\d)', text)
+            explanation_match = re.search(r'"explanation"\s*:\s*"(.+?)"', text, re.DOTALL)
 
-            # fallback: não encontrou formato esperado
-            return 0, f"Unexpected response from the judging model: {text}"
+            if judgement_match and explanation_match:
+                judgement = int(judgement_match.group(1))
+                explanation = explanation_match.group(1).strip()
+                return judgement, explanation
+            else:
+                print("WARNING: Could not extract expected fields.")
+                print("Raw model output:\n", text)
+                return 0, "Malformed or incomplete response."
 
-        return 0, "No response from the judging model."
+        return 0, "No response from LLM judge."
+
 
     def judge_and_save(self, predictions_path: str, output_path: str):
         """
