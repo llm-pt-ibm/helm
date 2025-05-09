@@ -339,7 +339,11 @@ class Runner:
             hlog(f"Saving judments locally: {os.path.join(prediction_path, 'judgements.json')}")
 
             # apply the metrics
-            self.apply_agreement_level_metric(judgements_file)
+            agreement = self.apply_agreement_level_metric(judgements_file)
+
+            # Save the summary
+            self._save_llm_judge_summary(run_spec, prediction_path, self.judge_model, agreement)
+
 
         else:
             # Apply the metrics
@@ -434,7 +438,7 @@ class Runner:
             
         return predictions
     
-    def apply_agreement_level_metric(self, judgements_file_path: str) -> None:
+    def apply_agreement_level_metric(self, judgements_file_path: str) -> float:
         """
         Calculates the agreement level based on the judgments from the judging model.
         Agreement level = number of responses with judgement == 1 / total responses
@@ -464,4 +468,32 @@ class Runner:
             "total_instances": total
         }, indent=2))
         hlog(f"Saved agreement level to {output_path}")
+        return agreement_level
+
+
+    def _save_llm_judge_summary(
+        self,
+        run_spec: RunSpec,
+        prediction_path: str,
+        judge_model: str,
+        agreement_level: float
+    ):
+        # Caminho para os julgamentos individuais
+        judgements_file = os.path.join(prediction_path, "llm_judgements.json")
+
+        # Carrega os dados das instâncias
+        with open(judgements_file, "r", encoding="utf-8") as f:
+            judgements = json.load(f)
+
+        summary = {
+            "benchmark": run_spec.name,
+            "main_model": run_spec.adapter_spec.model,  # ou model_deployment, se preferir
+            "judge_model": judge_model,
+            "agreement_level": round(agreement_level, 4),
+            "tasks": judgements,
+        }
+
+        output_file = os.path.join(prediction_path, "llm_judge_summary.json")
+        write(output_file, json.dumps(summary, indent=2, ensure_ascii=False))
+        hlog(f"Saved LLM Judge summary to {output_file}")
 
