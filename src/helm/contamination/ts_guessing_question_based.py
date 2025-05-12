@@ -57,65 +57,55 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 masked_words = []
                 part_one, part_two, part_four = await self._prompt_default()
 
-                for i, request_state in enumerate(scenario_state.request_states):
+                for i, rs in enumerate(scenario_state.request_states):
+                    mw = ""
                     if i < len(data_points):
-                        data_point = data_points[i]
                         try:
-                            prompt, masked_word = self._build_prompt(
-                                data_point, tagger, eval_data_name, part_one, part_two, part_four
+                            prompt, mw = self._build_prompt(
+                                data_points[i], tagger, eval_data_name, part_one, part_two, part_four
                             )
+                            # only proceed if prompt built successfully and required attrs exist
+                            if (
+                                prompt != "failed"
+                                and hasattr(rs, "instance")
+                                and hasattr(rs.instance, "input")
+                                and hasattr(rs, "request")
+                            ):
+                                # update the instance input
+                                new_input = replace(rs.instance.input, text=prompt)
+                                new_instance = replace(rs.instance, input=new_input)
+                                # update the request prompt and token limit
+                                new_request = replace(rs.request, prompt=prompt, max_tokens=15)
 
-                            if prompt != "failed":
-                                # Safely modify the instance input
-                                if hasattr(request_state, "instance") and hasattr(request_state.instance, "input"):
-                                    new_input = replace(request_state.instance.input, text=prompt)
-                                    new_instance = replace(request_state.instance, input=new_input)
-
-                                    # Safely modify the request prompt
-                                    if hasattr(request_state, "request"):
-                                        new_request = replace(request_state.request, prompt=prompt, max_tokens=15)
-
-                                        # Update instructions in adapter_spec if it exists
-                                        if hasattr(scenario_state, "adapter_spec"):
-                                            try:
-                                                new_adapter_spec = replace(
-                                                    scenario_state.adapter_spec,
-                                                    method="generation",
-                                                    instructions="",
-                                                    input_prefix="",
-                                                    output_prefix="Answer: ",
-                                                    max_tokens=15,
-                                                )
-                                                scenario_state.adapter_spec = new_adapter_spec
-                                            except Exception as e:
-                                                hlog(f"Error updating adapter_spec: {e}")
-
-                                        # Creates new request_state
-                                        novo_request_state = replace(
-                                            request_state, instance=new_instance, request=new_request
+                                # update adapter_spec if it exists
+                                if hasattr(scenario_state, "adapter_spec"):
+                                    try:
+                                        scenario_state.adapter_spec = replace(
+                                            scenario_state.adapter_spec,
+                                            method="generation",
+                                            instructions="",
+                                            input_prefix="",
+                                            output_prefix="Answer: ",
+                                            max_tokens=15,
                                         )
-                                        scenario_state.request_states[i] = novo_request_state
-                                        masked_words.append(masked_word)
-                                    else:
-                                        hlog(f"Request attribute missing in request_state {i}")
-                                        masked_words.append("")
-                                else:
-                                    hlog(f"Instance or input attribute missing in request_state {i}")
-                                    masked_words.append("")
-                            else:
-                                masked_words.append("")
+                                    except Exception as e:
+                                        hlog(f"Error updating adapter_spec: {e}")
+
+                                # save the updated request_state
+                                scenario_state.request_states[i] = replace(
+                                    rs, instance=new_instance, request=new_request
+                                )
                         except Exception as e:
-                            hlog(f"Error building prompt for instance {i}: {e}")
-                            masked_words.append("")
-                    else:
-                        masked_words.append("")
+                            hlog(f"Error at index {i}: {e}")
+                    # append either the masked word or empty string
+                    masked_words.append(mw)
 
                 # Execute model queries
                 try:
                     response_scenario_state = executor.execute(scenario_state)
                 except Exception as e:
                     hlog(f"Error executing model queries: {e}")
-                    return {"exact_match": 0.0}
+                    return []
 
                 # Process results
                 results = []
@@ -130,7 +120,6 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                             ):
 
                                 full_response = rs.result.completions[0].text.strip().lower()
-
                                 # Safely extract first word
                                 response_words = full_response.split()
                                 first_word = (
@@ -146,7 +135,6 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                                 )
                         except Exception as e:
                             hlog(f"Error processing result for instance {i}: {e}")
-
                 # Calculate metrics
                 if results:
                     exact_match = sum(1 for r in results if r["response"] == r["masked_word"]) / len(results)
@@ -154,10 +142,22 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                     hlog("No valid results to calculate exact match")
                     exact_match = 0.0
 
-                return {"exact_match": exact_match}
+                return [
+                    {
+                        "name": {"name": "contamination (ts guessing base exatch match)", "split": "test"},
+                        "count": 1,
+                        "sum": exact_match,
+                        "sum_squared": exact_match**2,
+                        "min": exact_match,
+                        "max": exact_match,
+                        "mean": exact_match,
+                        "variance": 0.0,
+                        "stddev": 0.0,
+                    }
+                ]
         except Exception as e:
             hlog(f"Unhandled error in _evaluate_async: {e}")
-            return {"exact_match": 0.0}
+            return []
 
     def _get_spacy_tagger(self):
         """Initialize and return a spaCy language model for POS tagging."""

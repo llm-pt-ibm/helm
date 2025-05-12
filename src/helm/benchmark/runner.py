@@ -297,31 +297,19 @@ class Runner:
         # Annotate (post-process the results)
         scenario_state = self.annotator_executor.execute(scenario_state)
 
-        result_data = {"name": {"name": "contamination", "split": "test"}}
         # Contamination assessment stage
+        result_contamination = []
         if self.contamination != []:
             scenario_state_copy = copy.deepcopy(scenario_state)
             contamination_evaluator = ContaminationEvaluator()
 
-            result = contamination_evaluator.evaluate(
+            result_contamination = contamination_evaluator.evaluate(
                 executor=self.executor,
                 method=self.contamination[0],
                 benchmark_path=input_instances_output_path,
                 scenario_state=scenario_state_copy,
                 language=self.contamination[1],
             )
-
-            model_full_name = run_spec.name
-            if "model=" in model_full_name:
-                model_name = model_full_name.split("model=")[1]
-                if "," in model_name:
-                    model_name = model_name.split(",")[0]
-            else:
-                model_name = model_full_name
-
-            result_data["method"] = self.contamination[0]
-            for key, value in result.items():
-                result_data[key] = value
 
         # Apply the metrics
         # When performing a dry run, only estimate the number of tokens instead
@@ -343,7 +331,7 @@ class Runner:
                     stats.extend(metric_result.aggregated_stats)
                     per_instance_stats.extend(metric_result.per_instance_stats)
         stats_list = [asdict_without_nones(stat) for stat in remove_stats_nans(stats)]
-        final_list = stats_list + [result_data]
+        final_list = result_contamination + stats_list
         # Check that there aren't duplicate `Stat`s
         # Note: doesn't catch near misses.
         metric_counts: typing.Counter[MetricName] = Counter([stat.name for stat in stats])

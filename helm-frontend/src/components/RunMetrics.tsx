@@ -36,11 +36,7 @@ export default function Run({ runName, suite, metricFieldMap }: Props) {
     async function fetchData() {
       const signal = controller.signal;
       const statsResp = await getStatsByName(runName, signal, suite);
-      const filteredStats = statsResp.filter(
-        (stat) => stat.name.name !== "contamination",
-      );
-
-      setStats(filteredStats);
+      setStats(statsResp);
     }
 
     void fetchData();
