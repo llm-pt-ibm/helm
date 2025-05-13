@@ -1,7 +1,7 @@
 from helm.benchmark.metrics.metric import MetricResult
 from helm.contamination.ts_guessing_question_based import TSGuessingQuestionBasedContaminationEvaluator
 from helm.contamination.ts_guessing_question_multichoice import TSGuessingQuestionMultiChoiceContaminationEvaluator
-
+from helm.common.hierarchical_logger import hlog
 
 class ContaminationEvaluator:
     """
@@ -9,30 +9,27 @@ class ContaminationEvaluator:
     based on the specified method.
     """
 
-    def evaluate(self, executor, method: str, benchmark_path: str, scenario_state, language: str) -> MetricResult:
+    def evaluate(self, executor, method: str, benchmark_path: str, scenario_state, language: str) -> list[dict]:
         """
         Evaluate contamination using the specified method.
 
         Args:
             method: The contamination evaluation method to use.
-            model_path: Path to the model.
             benchmark_path: Path to the benchmark data.
             scenario_state: The current scenario state.
-            metric_service: Service for computing metrics.
-            eval_cache_path: Path for caching evaluation results.
-            parallelism: Number of parallel workers.
+            language: defines the prompt language.
 
         Returns:
-            MetricResult containing contamination evaluation statistics.
+            List containing contamination evaluation statistics.
         """
         # Select the appropriate evaluator based on the method
         if method == "ts_guessing_question_base":
             evaluator = TSGuessingQuestionBasedContaminationEvaluator()
         elif method == "ts_guessing_question_multichoice":
             evaluator = TSGuessingQuestionMultiChoiceContaminationEvaluator()
-        # Add more evaluators as needed
         else:
-            raise ValueError(f"Unknown contamination evaluation method: {method}")
+            hlog(f"Unknown contamination evaluation method: {method}")
+            return []
 
         # Run the selected evaluator
         return evaluator.evaluate(

@@ -20,13 +20,13 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         self.translator = Translator()
         self.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-    def evaluate(self, executor, benchmark_path: str, scenario_state, language: str) -> dict:
+    def evaluate(self, executor, benchmark_path: str, scenario_state, language: str) -> list[dict]:
         """
         Evaluate contamination using the TS-Guessing question-multichoice approach.
         """
         return asyncio.run(self._evaluate_async(executor, benchmark_path, scenario_state, language))
 
-    async def _evaluate_async(self, executor, benchmark_path: str, scenario_state, language: str) -> dict:
+    async def _evaluate_async(self, executor, benchmark_path: str, scenario_state, language: str) -> list[dict]:
         self.language = language
         with htrack_block("TS-Guessing (question-multichoice) contamination evaluation"):
 

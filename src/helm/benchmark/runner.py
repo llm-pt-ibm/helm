@@ -154,9 +154,9 @@ class Runner:
         cache_instances_only: bool,
         skip_completed_runs: bool,
         exit_on_error: bool,
-        contamination: List[str] = None,
+        contamination: List[str],
     ):
-        self.contamination = contamination or []
+        self.contamination = contamination
         self.executor = Executor(execution_spec)
         self.annotator_executor = AnnotationExecutor(
             AnnotationExecutionSpec(
@@ -299,7 +299,7 @@ class Runner:
 
         # Contamination assessment stage
         result_contamination = []
-        if self.contamination != []:
+        if self.contamination:
             scenario_state_copy = copy.deepcopy(scenario_state)
             contamination_evaluator = ContaminationEvaluator()
 

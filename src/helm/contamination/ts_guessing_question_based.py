@@ -18,13 +18,13 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         self.language = "en"
         self.translator = Translator()
 
-    def evaluate(self, executor, benchmark_path: str, scenario_state, language: str) -> float:
+    def evaluate(self, executor, benchmark_path: str, scenario_state, language: str) -> list[dict]:
         """
         Evaluate contamination using the TS guessing question-based approach.
         """
         return asyncio.run(self._evaluate_async(executor, benchmark_path, scenario_state, language))
 
-    async def _evaluate_async(self, executor, benchmark_path: str, scenario_state, language: str) -> float:
+    async def _evaluate_async(self, executor, benchmark_path: str, scenario_state, language: str) -> list[dict]:
         try:
             self.language = language
             with htrack_block("ts_guessing_question_based contamination evaluation"):
