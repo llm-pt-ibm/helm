@@ -1,9 +1,6 @@
 import type Perturbation from "@/types/Perturbation";
 
 export default interface Stat {
-  method: string;
-  exact_match: string;
-  rouge_L: string;
   count: number;
   max: number;
   mean: number;
