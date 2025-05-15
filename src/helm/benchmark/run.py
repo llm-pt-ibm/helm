@@ -274,9 +274,8 @@ def main():
     )
     parser.add_argument(
         "--llm-judge",
-        type=str,
-        default=None,
-        help="Checks if the evaluation form uses llm as judge.",
+        action="store_true",
+        help="Use LLM-as-Judge to evaluate the model's responses.",
     )
     parser.add_argument(
         "--judge-model",

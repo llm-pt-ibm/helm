@@ -306,7 +306,7 @@ class Runner:
         # Annotate (post-process the results)
         scenario_state = self.annotator_executor.execute(scenario_state)
         
-        if (self.llm_judge == "yes"):
+        if self.llm_judge:
             # Extract predictions in JSON format
             predictions = self._extract_predictions(scenario_state)
 
