@@ -82,6 +82,7 @@ def run_benchmarking(
     dry_run: bool,
     llm_judge: Optional[str],
     judge_model: Optional[str],
+    prompt_file: Optional[str],
     skip_instances: bool,
     cache_instances: bool,
     cache_instances_only: bool,
@@ -127,6 +128,7 @@ def run_benchmarking(
         exit_on_error,
         llm_judge=llm_judge,
         judge_model=judge_model,
+        prompt_file=prompt_file,
     )
     runner.run_all(run_specs)
     return run_specs
@@ -282,6 +284,14 @@ def main():
         default=None,
         help="Model to use for LLM judge.",
     )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        nargs="?",
+        const="default_prompt.txt",
+        default="default_prompt.txt",
+        help="Name of the prompt file (inside customizable_prompts/) to be used by the LLM judge.",
+    )
 
     add_run_args(parser)
     args = parser.parse_args()
@@ -363,6 +373,7 @@ def main():
         suite=args.suite,
         dry_run=args.dry_run,
         llm_judge=args.llm_judge,
+        prompt_file=args.prompt,
         judge_model=args.judge_model,
         skip_instances=args.skip_instances,
         cache_instances=args.cache_instances,

@@ -151,9 +151,11 @@ class Runner:
         exit_on_error: bool,
         llm_judge:str,
         judge_model:str,
+        prompt_file: str,
     ):
         self.llm_judge = llm_judge
         self.judge_model = judge_model
+        self.prompt_file = prompt_file
         self.executor = Executor(execution_spec)
         self.annotator_executor = AnnotationExecutor(
             AnnotationExecutionSpec(
@@ -328,7 +330,11 @@ class Runner:
             cache_stats.print_status()
 
             # Initialize the LLMJudge
-            llm_judge = LLMJudger(self.executor.service, judge_model=self.judge_model)
+            llm_judge = LLMJudger(
+                self.executor.service,
+                judge_model=self.judge_model,
+                prompt_file=self.prompt_file
+            )
 
             # Judge the predictions
             predictions_file = os.path.join(prediction_path, "predictions.json")

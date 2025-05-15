@@ -11,12 +11,13 @@ from helm.common.request import Request
 from helm.common.authentication import Authentication
 
 class LLMJudger:
-    def __init__(self, executor_service, judge_model: str = "openai/gpt2"):
+    def __init__(self, executor_service, judge_model: str = "openai/gpt2", prompt_file: str = "default_prompt.txt"):
         """
         executor_service: self.executor.service vindo do Runner
         """
         self.executor_service = executor_service
         self.judge_model = judge_model
+        self.prompt_file = prompt_file
 
     def judge_predictions(self, predictions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         judgements = []
@@ -26,21 +27,24 @@ class LLMJudger:
             model_response = prediction.get("prediction", "")
 
             # Criação do prompt para o modelo julgador
-            prompt = (
-                "Você é um avaliador rigoroso de respostas geradas por modelos de linguagem. "
-                "Sua tarefa é avaliar, de forma objetiva, se a resposta fornecida está correta em relação ao texto de entrada. "
-                "Corretude significa o quanto a resposta condiz com a intenção e o conteúdo do texto fornecido como entrada.\n\n"
-                f"Entrada:\n{input_text}\n\n"
-                f"Resposta do modelo:\n{model_response}\n\n"
-                "Agora, com base na entrada e na resposta do modelo, retorne sua avaliação **estritamente** no seguinte formato JSON:\n\n"
-                "{\n"
-                '  "judgement": 1(quando concorda com o modelo principal) ou 0(quando discorda do modelo principal),\n'
-                '  "explanation": "explicação do porquê a resposta está correta ou incorreta"\n'
-                "}\n\n"
-                "Importante: não adicione nenhum comentário, rótulo, explicação fora do JSON. Apenas imprima esse JSON diretamente como resposta."
-            )
+            # prompt = (
+            #     "Você é um avaliador rigoroso de respostas geradas por modelos de linguagem. "
+            #     "Sua tarefa é avaliar, de forma objetiva, se a resposta fornecida está correta em relação ao texto de entrada. "
+            #     "Corretude significa o quanto a resposta condiz com a intenção e o conteúdo do texto fornecido como entrada.\n\n"
+            #     f"Entrada:\n{input_text}\n\n"
+            #     f"Resposta do modelo:\n{model_response}\n\n"
+            #     "Agora, com base na entrada e na resposta do modelo, retorne sua avaliação **estritamente** no seguinte formato JSON:\n\n"
+            #     "{\n"
+            #     '  "judgement": 1(quando concorda com o modelo principal) ou 0(quando discorda do modelo principal),\n'
+            #     '  "explanation": "explicação do porquê a resposta está correta ou incorreta"\n'
+            #     "}\n\n"
+            #     "Importante: não adicione nenhum comentário, rótulo, explicação fora do JSON. Apenas imprima esse JSON diretamente como resposta."
+            # )
 
-           
+            prompt_tamplate = self._load_prompt_template(self.prompt_file)
+            prompt = prompt_tamplate.replace("{input}", input_text).replace("{response}", model_response)
+
+            print(f"==============Prompt: {prompt}====================")
 
             # Chamada ao modelo julgador
             judged_value, explanation = self.call_llm(prompt)
@@ -112,3 +116,17 @@ class LLMJudger:
             raise Exception(f"Could not find a model deployment for judge model '{self.judge_model}'. "
                             f"Make sure the model is correctly registered in the HELM model YAML.")
         return deployment_name
+    
+    # Load the prompt template from a file
+    def _load_prompt_template(self, prompt_file: str) -> str:
+        """
+        Load the prompt template from a .txt file located in customizable_prompts/
+        """
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        prompt_path = os.path.join(current_dir, "customizable_prompts", prompt_file)
+
+        if not os.path.exists(prompt_path):
+            raise FileNotFoundError(f"Prompt file '{prompt_path}' not found. Make sure the file exists.")
+
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            return f.read()
