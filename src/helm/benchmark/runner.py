@@ -298,18 +298,23 @@ class Runner:
         scenario_state = self.annotator_executor.execute(scenario_state)
 
         # Contamination assessment stage
-        result_contamination = []
-        if self.contamination:
+        result_contamination: List[Stat] = [] # Ensure it's always a list
+        if self.contamination and len(self.contamination) >= 2: # Check if contamination params are provided
+            # Deepcopy scenario_state to avoid unintended modifications by the contamination evaluator
             scenario_state_copy = copy.deepcopy(scenario_state)
             contamination_evaluator = ContaminationEvaluator()
 
+            # Pass the TokenizerService to the contamination evaluator
             result_contamination = contamination_evaluator.evaluate(
                 executor=self.executor,
                 method=self.contamination[0],
                 benchmark_path=input_instances_output_path,
                 scenario_state=scenario_state_copy,
                 language=self.contamination[1],
+                tokenizer_service=self.tokenizer_service
             )
+        elif self.contamination:
+            hlog("WARNING: Contamination evaluation requested but parameters are incomplete. Skipping.")
 
         # Apply the metrics
         # When performing a dry run, only estimate the number of tokens instead

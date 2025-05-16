@@ -1,6 +1,6 @@
-from helm.benchmark.metrics.metric import MetricResult
 from helm.contamination.ts_guessing_question_based import TSGuessingQuestionBasedContaminationEvaluator
 from helm.contamination.ts_guessing_question_multichoice import TSGuessingQuestionMultiChoiceContaminationEvaluator
+from helm.benchmark.window_services.tokenizer_service import TokenizerService
 from helm.common.hierarchical_logger import hlog
 
 class ContaminationEvaluator:
@@ -9,7 +9,7 @@ class ContaminationEvaluator:
     based on the specified method.
     """
 
-    def evaluate(self, executor, method: str, benchmark_path: str, scenario_state, language: str) -> list[dict]:
+    def evaluate(self, executor, method: str, benchmark_path: str, scenario_state, language: str, tokenizer_service) -> list[dict]:
         """
         Evaluate contamination using the specified method.
 
@@ -33,5 +33,9 @@ class ContaminationEvaluator:
 
         # Run the selected evaluator
         return evaluator.evaluate(
-            executor=executor, benchmark_path=benchmark_path, scenario_state=scenario_state, language=language
+            executor=executor, 
+            benchmark_path=benchmark_path, 
+            scenario_state=scenario_state, 
+            language=language,
+            tokenizer_service=tokenizer_service
         )
