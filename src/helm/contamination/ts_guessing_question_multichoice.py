@@ -40,7 +40,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 hlog(
                     f'The selected benchmark "{eval_data_name}" does not qualify for the verification strategy TS-Guessing question-multichoice.'
                 )
-                return {"error": "Benchmark not suitable", "exact_match": 0.0, "rouge_l": 0.0}
+                return []
 
             # Filter and prepare data
             data_points = self._filter_data(scenario_state)
@@ -48,7 +48,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
 
             if not data_points:
                 hlog("No data points after filtering. Skipping evaluation.")
-                return {"error": "No data points", "exact_match": 0.0, "rouge_l": 0.0}
+                return []
 
             p = np.random.permutation(len(data_points))
             data_points = [data_points[i] for i in p[: len(data_points)]]
@@ -67,36 +67,67 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         instruction_text, user_text, answer, wrong_letter = self._build_prompt(
                             data_point, part_one, part_two, part_three, part_four, part_five, part_six
                         )
-                        if instruction_text != "failed":
-                            new_adapter_spec = replace(
-                                scenario_state.adapter_spec,
-                                method="generation",
-                                instructions=instruction_text,
-                                input_prefix="",
-                                input_suffix="",
-                                output_prefix="Answer: ",
+                        if (
+                            instruction_text != "failed"
+                            and hasattr(request_state, "instance")
+                            and hasattr(request_state.instance, "input")
+                            and hasattr(request_state, "request")
+                        ):
+                            # Update the instance input
+                            new_input = replace(request_state.instance.input, text=user_text)
+                            new_instance = replace(request_state.instance, input=new_input, references=[])
+
+                            # Update the request prompt and token limit
+                            new_request = replace(
+                                request_state.request,
+                                prompt=user_text,
                                 max_tokens=100,
+                                temperature=0.1,
+                                stop_sequences=[],
                             )
 
-                            new_input = replace(request_state.instance.input, text=user_text)
-                            new_instance = replace(request_state.instance, input=new_input)
-                            new_request = replace(request_state.request, prompt=user_text, max_tokens=100)
+                            # Update adapter_spec if it exists
+                            if hasattr(scenario_state, "adapter_spec"):
+                                try:
+                                    scenario_state.adapter_spec = replace(
+                                        scenario_state.adapter_spec,
+                                        method="generation",
+                                        instructions=instruction_text,
+                                        input_prefix="",
+                                        output_prefix="Answer: ",
+                                        input_suffix="",
+                                        output_suffix="",
+                                        max_tokens=100,
+                                        temperature=0.1,
+                                        stop_sequences=[],
+                                        num_outputs=1,
+                                        global_prefix="",
+                                        global_suffix="",
+                                        reference_prefix="",
+                                        reference_suffix="",
+                                    )
+                                except Exception as e:
+                                    hlog(f"Error updating adapter_spec: {e}")
 
-                            scenario_state.adapter_spec = new_adapter_spec
+                            # Save the updated request_state
                             scenario_state.request_states[i] = replace(
                                 request_state, instance=new_instance, request=new_request
                             )
+
                             answers_for_eval.append(answer)
                             wrong_letters_for_eval.append(wrong_letter)
                             valid_request_states_indices.append(i)
-                        else:
-                            hlog(f"Failed to build prompt for data point {i} (original index in scenario_state)")
+
+                        if hasattr(request_state, "output_mapping"):
+                            scenario_state.request_states[i] = replace(
+                                scenario_state.request_states[i], output_mapping=None
+                            )
                     except Exception as e:
                         hlog(f"Error building prompt or updating state for data point {i}: {e}")
 
             if not valid_request_states_indices:
                 hlog("No valid prompts were constructed for any data points.")
-                return {"error": "No valid prompts constructed", "exact_match": 0.0, "rouge_l": 0.0}
+                return []
 
             try:
                 response_scenario_state = self._query_model(scenario_state, executor)
@@ -173,15 +204,16 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             # Results
             results = []
             for metric_name, val in metrics.items():
+                valor = round(val, 2)
                 results.append(
                     {
                         "name": {"name": f"contamination (ts guessing multichoice {metric_name})", "split": "test"},
                         "count": 1,
-                        "sum": val,
-                        "sum_squared": val**2,
-                        "min": val,
-                        "max": val,
-                        "mean": val,
+                        "sum": valor,
+                        "sum_squared": round(valor**2, 2),
+                        "min": valor,
+                        "max": valor,
+                        "mean": valor,
                         "variance": 0.0,
                         "stddev": 0.0,
                     }

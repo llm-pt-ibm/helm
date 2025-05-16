@@ -3,6 +3,7 @@ from helm.contamination.ts_guessing_question_based import TSGuessingQuestionBase
 from helm.contamination.ts_guessing_question_multichoice import TSGuessingQuestionMultiChoiceContaminationEvaluator
 from helm.common.hierarchical_logger import hlog
 
+
 class ContaminationEvaluator:
     """
     Class responsible for evaluating contamination using different strategies
