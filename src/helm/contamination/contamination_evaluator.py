@@ -3,6 +3,7 @@ from helm.contamination.ts_guessing_question_multichoice import TSGuessingQuesti
 from helm.benchmark.window_services.tokenizer_service import TokenizerService
 from helm.common.hierarchical_logger import hlog
 
+
 class ContaminationEvaluator:
     """
     Class responsible for evaluating contamination using different strategies
