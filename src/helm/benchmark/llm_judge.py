@@ -120,10 +120,10 @@ class LLMJudger:
     # Load the prompt template from a file
     def _load_prompt_template(self, prompt_file: str) -> str:
         """
-        Load the prompt template from a .txt file located in customizable_prompts/
+        Load the prompt template from a .txt file located in prompts/
         """
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        prompt_path = os.path.join(current_dir, "customizable_prompts", prompt_file)
+        prompt_path = os.path.join(current_dir, "prompts", prompt_file)
 
         if not os.path.exists(prompt_path):
             raise FileNotFoundError(f"Prompt file '{prompt_path}' not found. Make sure the file exists.")

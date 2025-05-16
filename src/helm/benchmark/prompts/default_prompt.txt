@@ -10,7 +10,7 @@ Agora, com base na entrada e na resposta do modelo, retorne sua avaliação **es
 
 {
   "judgement": 1 (quando concorda com o modelo principal) ou 0 (quando discorda do modelo principal),
-  "explanation": "explicação do porquê a resposta está correta ou incorreta"
+  "explanation": "explicação breve do porquê a resposta está correta ou incorreta"
 }
 
 Importante: não adicione nenhum comentário, rótulo, explicação fora do JSON. Apenas imprima esse JSON diretamente como resposta.
