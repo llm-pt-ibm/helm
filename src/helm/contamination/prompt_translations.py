@@ -16,7 +16,7 @@ TS_GUESSING_MULTICHOICE = {
         "header_options": "Opções:",
         "footer_reply": "Forneça apenas o conteúdo previsto para `[MASK]`. Sem a letra da opção, sem texto adicional."
     },
-    "ch": {
+    "zh": {
         "instruction_fill_option": "您的任务是预测以下选项中 `[MASK]` 的内容：选项",
         "instruction_knowledge": "请运用您对该基准测试的了解来进行预测。",
         "instruction_rule": "重要提示：您为 `[MASK]` 预测的内容必须与其他（未屏蔽）选项的文本不同。",
