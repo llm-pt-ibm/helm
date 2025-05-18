@@ -1,4 +1,10 @@
 
+TS_GUESSING_BASE = {
+    "en": {"instruction": "Fill in the [MASK] in the sentence:", "sentence_template": "\"{masked_sentence}\"", "answer_prefix": "Answer: "},
+    "pt": {"instruction": "Preencha o [MASK] na frase:", "sentence_template": "\"{masked_sentence}\"", "answer_prefix": "Resposta: "},
+    "zh": {"instruction": "填写句子中的[MASK]：", "sentence_template": "“{masked_sentence}”", "answer_prefix": "答案："},
+}
+
 TS_GUESSING_MULTICHOICE = {
     "en": {
         "instruction_fill_option": "Your task is to predict the content of the `[MASK]` in option",
