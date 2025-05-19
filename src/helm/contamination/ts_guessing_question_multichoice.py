@@ -2,16 +2,14 @@ import os
 import numpy as np
 import asyncio
 import traceback
-from rouge_score import rouge_scorer # Mantido para cálculo de ROUGE
+from rouge_score import rouge_scorer
 from dataclasses import replace
-from typing import List, Dict, Any, Tuple # Adicionado Tuple para clareza
+from typing import List, Dict, Any, Tuple
 
 from helm.common.hierarchical_logger import hlog, htrack_block
-from nltk.tokenize import sent_tokenize # Mantido para processamento de resposta
-# TokenizerService e TokenizationRequest são necessários para check_prompt_length via UtilsContamination
-from helm.common.tokenization_request import TokenizationRequest # UtilsContamination pode precisar dele internamente
-from helm.benchmark.window_services.tokenizer_service import TokenizerService # Necessário para UtilsContamination.check_prompt_length
-# UtilsContamination já importa o que precisa de model_deployment e AutoTokenizer
+from nltk.tokenize import sent_tokenize
+from helm.common.tokenization_request import TokenizationRequest
+from helm.benchmark.window_services.tokenizer_service import TokenizerService
 from .utils_contamination import UtilsContamination
 
 class TSGuessingQuestionMultiChoiceContaminationEvaluator:
@@ -23,20 +21,19 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
     Reference: https://aclanthology.org/2024.naacl-long.482/
     """
 
-    STRATEGY_NAME: str = "ts_guessing_multichoice" # Para usar com get_prompt_fragments
+    STRATEGY_NAME: str = "ts_guessing_multichoice"
     STRATEGY_DISPLAY_NAME: str = "TS-Guessing (question-multichoice)"
 
-    # Parâmetros específicos da estratégia de geração/prompt
-    SMALL_MODEL_CONTEXT_THRESHOLD: int = 1024 # Limite para avisar sobre possíveis skips
-    MAX_OUTPUT_TOKENS: int = 100 # Máximo de tokens para a resposta gerada
-    TOKENIZER_BUFFER: int = 30 # Buffer para garantir que a resposta caiba
-    GENERATION_TEMPERATURE: float = 0.1 # Temperatura para geração
+
+    SMALL_MODEL_CONTEXT_THRESHOLD: int = 1024
+    MAX_OUTPUT_TOKENS: int = 100
+    TOKENIZER_BUFFER: int = 30
+    GENERATION_TEMPERATURE: float = 0.1
 
     def __init__(self):
-        self.language: str = "en" # Será atualizado em evaluate_async
+        self.language: str = "en"
         self.alphabet: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         self._check_nltk_punkt()
-        # self.model_max_length será definido em _evaluate_async
 
     def _check_nltk_punkt(self):
         try:
@@ -50,13 +47,12 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
 
     def evaluate(
         self,
-        executor, # helm.benchmark.executor.Executor
-        benchmark_path: str, # Caminho do benchmark, ex: "mmlu:subject=abstract_algebra,split=test"
-        scenario_state, # helm.benchmark.runner.ScenarioState
-        language: str, # Código do idioma, ex: "en"
-        tokenizer_service: TokenizerService # Serviço de tokenização do HELM
-    ) -> List[Dict[str, Any]]: # Lista de estatísticas formatadas para o HELM
-        """Ponto de entrada síncrono para a avaliação."""
+        executor,
+        benchmark_path: str,
+        scenario_state,
+        language: str,
+        tokenizer_service: TokenizerService
+    ) -> List[Dict[str, Any]]:
         return asyncio.run(self._evaluate_async(
             executor,
             benchmark_path,
@@ -73,7 +69,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         language: str,
         tokenizer_service: TokenizerService
     ) -> List[Dict[str, Any]]:
-        self.language = language.lower().split('_')[0] # Normaliza para "en", "pt", etc.
+        self.language = language.lower().split('_')[0]
 
         with htrack_block(f"{self.STRATEGY_DISPLAY_NAME} contamination evaluation for language '{self.language}'"):
             eval_data_name = os.path.basename(benchmark_path).split(":")[0]
@@ -90,7 +86,6 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 hlog("STRATEGY ERROR: Model identifier (model_deployment or model) not found in AdapterSpec. Cannot proceed.")
                 return []
 
-            # Usar UtilsContamination para determinar o comprimento máximo do modelo
             model_max_length = UtilsContamination.determine_model_max_length(model_deployment_name_from_spec)
             hlog(f"STRATEGY INFO: Effective model_max_length for {model_deployment_name_from_spec}: {model_max_length}")
 
@@ -104,29 +99,32 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 hlog("STRATEGY INFO: No data points available after filtering.")
                 return []
 
-            # Embaralhar para evitar viés de ordem, se houver
             shuffled_data_points = [data_points[i] for i in np.random.permutation(len(data_points))]
 
             reference_texts_for_masked_slots: List[str] = []
             masked_option_letters: List[str] = []
-            valid_request_states_for_execution = [] # List[RequestState]
+            valid_request_states_for_execution = []
             skipped_instance_count: int = 0
 
-            # Obter fragmentos de prompt usando UtilsContamination
             prompt_components = UtilsContamination.get_prompt_fragments(self.STRATEGY_NAME, self.language)
             if not prompt_components:
                 hlog(f"STRATEGY ERROR: Could not load prompt components for strategy '{self.STRATEGY_NAME}' and language '{self.language}'.")
                 return []
 
-            # Criar AdapterSpec para geração usando UtilsContamination
             generation_params = {
                 "max_tokens": self.MAX_OUTPUT_TOKENS,
                 "temperature": self.GENERATION_TEMPERATURE,
-                "stop_sequences": [], # Pode ser configurado se necessário
+                "stop_sequences": [], 
                 "num_outputs": 1,
-                # O prompt já contém instruções e o prefixo de resposta (footer_reply),
-                # então não precisamos de output_prefix aqui se o prompt for bem construído.
-                # "output_prefix": prompt_components.get("answer_prefix", "Answer: "), # Ou similar, se aplicável
+                "output_prefix": "Answer: ",
+                "instructions": "", 
+                "input_prefix": "", 
+                "input_suffix": "", 
+                "output_suffix": "",
+                "global_prefix": "", 
+                "global_suffix": "", 
+                "reference_prefix": "", 
+                "reference_suffix": ""
             }
             generation_adapter_spec = UtilsContamination.create_generation_adapter_spec(
                 scenario_state.adapter_spec, generation_params
@@ -147,13 +145,12 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     instruction_text, user_text, original_text_of_masked_option, wrong_letter = self._build_prompt(
                         data_point_item, prompt_components
                     )
-                    if instruction_text == "failed": # Sinaliza falha em _build_prompt
+                    if instruction_text == "failed":
                         skipped_instance_count += 1
                         continue
                     
                     combined_prompt = f"{instruction_text}\n\n{user_text}"
                     
-                    # Verificar comprimento do prompt usando UtilsContamination
                     is_valid_len, num_prompt_tokens = UtilsContamination.check_prompt_length(
                         combined_prompt, model_deployment_name_from_spec, tokenizer_service, max_allowable_prompt_tokens
                     )
@@ -163,28 +160,24 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         skipped_instance_count += 1
                         continue
                         
-                    # Preparar RequestState para execução
                     new_input = replace(current_request_state.instance.input, text=combined_prompt)
-                    # Limpar referências, pois estamos em modo de geração e a resposta original não é mais o alvo direto
                     new_instance = replace(current_request_state.instance, input=new_input, references=[]) 
                     
-                    # Atualizar o request com os parâmetros de geração
                     new_request = replace(
                         current_request_state.request,
                         prompt=combined_prompt,
-                        # Os parâmetros de geração já estão no generation_adapter_spec,
-                        # mas podem ser definidos aqui para garantir, se a execução do HELM os priorizar.
-                        # max_tokens=self.MAX_OUTPUT_TOKENS, 
-                        # temperature=self.GENERATION_TEMPERATURE
+                        max_tokens=self.MAX_OUTPUT_TOKENS, 
+                        temperature=self.GENERATION_TEMPERATURE,
+                        stop_sequences=[]
                     )
                     
                     prepared_rs = replace(
                         current_request_state,
                         instance=new_instance,
                         request=new_request,
-                        result=None # Limpar resultado anterior
+                        result=None
                     )
-                    # Remover campos que não são relevantes para o modo de geração direta
+
                     if hasattr(prepared_rs, "output_mapping"): prepared_rs = replace(prepared_rs, output_mapping=None)
                     if hasattr(prepared_rs, "reference_index"): prepared_rs = replace(prepared_rs, reference_index=None)
                     
@@ -211,14 +204,13 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 response_scenario_state = await self._query_model(execution_scenario_state, executor)
             except Exception as e:
                 hlog(f"STRATEGY CRITICAL: Error during model query phase: {e}\n{traceback.format_exc()}")
-                return [] # Não podemos prosseguir se a consulta ao modelo falhar catastroficamente
+                return []
 
             processed_instance_results: List[Dict[str, str]] = []
             for i, response_state in enumerate(response_scenario_state.request_states):
                 try:
                     if response_state.result and response_state.result.completions and response_state.result.completions[0].text:
                         response_text = response_state.result.completions[0].text.strip()
-                        # Usar o masked_option_letter correto para este índice
                         processed_response = self._process_response(response_text, masked_option_letters[i])
                         
                         instance_id = getattr(valid_request_states_for_execution[i].instance, "id", f"proc_inst_{i}")
@@ -240,21 +232,20 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             model_generations = [res["model_prediction"] for res in processed_instance_results]
             
             exact_match_score = 0.0
-            if model_generations: # Evitar divisão por zero
+            if model_generations:
                 exact_match_score = sum(gen == gold for gen, gold in zip(model_generations, gold_references)) / len(model_generations)
 
             calculated_metrics = {
                 "exact_match": exact_match_score,
-                "rouge_l_f1": 0.0 # Inicializa
+                "rouge_l_f1": 0.0
             }
 
             if model_generations:
                 try:
-                    # Usar stemmer apenas para inglês, como no original
                     scorer = rouge_scorer.RougeScorer(["rougeLsum"], use_stemmer=(self.language == "en"))
                     rouge_scores_f1 = [
                         scorer.score(str(model_gen), str(gold_ref))["rougeLsum"].fmeasure
-                        if gold_ref and model_gen # Evitar score em strings vazias que podem dar erro
+                        if gold_ref and model_gen
                         else 0.0
                         for model_gen, gold_ref in zip(model_generations, gold_references)
                     ]
@@ -262,36 +253,29 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 except Exception as e:
                     hlog(f"STRATEGY ERROR: ROUGE Scorer calculation failed: {e}\n{traceback.format_exc()}")
 
-            # Usar UtilsContamination para formatar as estatísticas
-            strategy_metric_prefix = f"contamination ({self.STRATEGY_NAME}" # Parêntese aberto aqui
+            strategy_metric_prefix = f"contamination ({self.STRATEGY_NAME}"
             final_helm_stats = UtilsContamination.format_helm_stats(
                 calculated_metrics,
-                strategy_metric_prefix, # UtilsContamination.format_helm_stats adiciona ")".
-                split="test" # Ou o split apropriado do scenario_state
+                strategy_metric_prefix,
+                split="test"
             )
             
             hlog(f"STRATEGY INFO: Evaluation completed for language '{self.language}'. "
                  f"Processed {len(processed_instance_results)} instances. "
-                 f"Final Exact Match: {calculated_metrics['exact_match']:.4f}, "
-                 f"ROUGE-L F1: {calculated_metrics['rouge_l_f1']:.4f}")
+                 f"Final Exact Match: {calculated_metrics['exact_match']:.2f}, "
+                 f"ROUGE-L F1: {calculated_metrics['rouge_l_f1']:.2f}")
             return final_helm_stats
 
     def _filter_data(self, scenario_state) -> List[Dict[str, Any]]:
-        """
-        Filtra e transforma os RequestStates em um formato mais simples para esta estratégia.
-        Utiliza UtilsContamination para extrair informações das instâncias.
-        """
         data_points: List[Dict[str, Any]] = []
         for i, request_state_item in enumerate(scenario_state.request_states):
             try:
-                # Usar UtilsContamination para extrair dados da instância
                 question_text = UtilsContamination.get_question_text(request_state_item.instance)
                 choices_list = UtilsContamination.get_choices(request_state_item.instance)
                 true_correct_answer_idx = UtilsContamination.get_answer_index(request_state_item.instance)
 
-                # Validação básica dos dados extraídos
                 if (question_text and question_text != "Unknown question or context" and
-                    choices_list and len(choices_list) > 1 and # Precisa de pelo menos 2 opções para ter uma incorreta
+                    choices_list and len(choices_list) > 1 and
                     isinstance(true_correct_answer_idx, int) and 
                     0 <= true_correct_answer_idx < len(choices_list)):
                     
@@ -300,7 +284,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         "text": question_text,
                         "choices": choices_list,
                         "true_correct_answer_index": true_correct_answer_idx,
-                        "original_request_state_index": i # Para rastrear o RequestState original
+                        "original_request_state_index": i
                     })
                 else:
                     hlog(f"STRATEGY DEBUG: Skipping instance {i} during filtering due to missing/invalid data "
@@ -310,11 +294,6 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         return data_points
 
     def _build_prompt(self, example_item: Dict[str, Any], prompt_components: Dict[str, str]) -> Tuple[str, str, str, str]:
-        """
-        Constrói o prompt para uma única instância, mascarando uma opção incorreta.
-        Retorna: (instruction_text, user_text, original_text_of_masked_option, masked_option_letter)
-        Retorna ("failed", "", "", "") em caso de erro.
-        """
         try:
             part_instr_fill = prompt_components.get("instruction_fill_option", "Fill [MASK] in option")
             part_instr_knowledge = prompt_components.get("instruction_knowledge", "Use knowledge.")
@@ -333,14 +312,13 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 return "failed", "", "", ""
 
             incorrect_option_indices = [i for i in range(len(choices_list)) if i != true_correct_answer_idx]
-            if not incorrect_option_indices: # Deve ser raro se len(choices_list) > 1
+            if not incorrect_option_indices:
                 hlog(f"STRATEGY DEBUG: No incorrect options to mask for instance {example_item.get('id', 'Unknown')}. This shouldn't happen if choices > 1.")
                 return "failed", "", "", ""
 
             masked_choice_idx = np.random.choice(incorrect_option_indices)
             original_text_of_masked_option = str(choices_list[masked_choice_idx])
             
-            # Garantir que o índice da letra não exceda o tamanho do alfabeto
             masked_option_letter = self.alphabet[masked_choice_idx % len(self.alphabet)] 
 
             instruction_text_segment = f"{part_instr_fill} {masked_option_letter}.\n{part_instr_knowledge}\n\n{part_instr_rule}"
@@ -362,15 +340,10 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             return "failed", "", "", ""
 
     def _process_response(self, response_text_input: str, masked_option_letter_param: str) -> str:
-        """
-        Limpa e processa o texto de resposta do modelo.
-        """
         try:
             if not response_text_input: return ""
             processed_text = str(response_text_input).strip()
 
-            # Remover prefixo como "A: texto" ou "A. texto" se o modelo o adicionar
-            # Isso é um pouco heurístico.
             option_prefix_to_strip_colon = f"{masked_option_letter_param}:"
             option_prefix_to_strip_dot = f"{masked_option_letter_param}."
             
@@ -379,26 +352,20 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             elif processed_text.upper().startswith(option_prefix_to_strip_dot.upper()):
                 processed_text = processed_text[len(option_prefix_to_strip_dot):].strip()
             
-            # Tentar pegar apenas a primeira sentença, pois o modelo pode ser verboso
             try:
-                # Verifica se NLTK está disponível (pode ter falhado no __init__)
                 if 'nltk' in globals() and hasattr(globals()['nltk'], 'download') and sent_tokenize:
                      sentences = sent_tokenize(processed_text)
                      if sentences: processed_text = sentences[0]
-            except LookupError: # Se o 'punkt' ainda não foi baixado
+            except LookupError:
                 pass 
-            except Exception as e_sent_tok: # Outros erros de sent_tokenize
+            except Exception as e_sent_tok:
                 hlog(f"STRATEGY DEBUG: sent_tokenize failed during response processing: {e_sent_tok}")
 
-
-            # Remover a string "[MASK]" se o modelo a repetir
             processed_text = processed_text.replace("[MASK]", "").strip()
 
-            # Remover colchetes no início e fim, se o modelo os adicionar
             if processed_text.startswith("[") and processed_text.endswith("]"):
                 processed_text = processed_text[1:-1].strip()
             
-            # Remover aspas no início e fim
             if (processed_text.startswith('"') and processed_text.endswith('"')) or \
                (processed_text.startswith("'") and processed_text.endswith("'")):
                 processed_text = processed_text[1:-1].strip()
@@ -406,30 +373,13 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             return processed_text
         except Exception as e:
             hlog(f"STRATEGY ERROR: Error processing model response: '{response_text_input[:50]}...': {e}\n{traceback.format_exc()}")
-            return "" # Retorna string vazia em caso de erro para não quebrar o cálculo de métricas
+            return ""
 
-    async def _query_model(self, scenario_state, executor) -> Any: # Retorna ScenarioState
-        """
-        Executa as requisições ao modelo de forma assíncrona.
-        """
+
+    async def _query_model(self, scenario_state, executor) -> Any:
         try:
-            # O executor.execute já é tipicamente assíncrono ou lida com isso internamente.
-            # Se executor.execute for um método síncrono bloqueante,
-            # e você precisa chamá-lo de um loop asyncio sem bloquear o loop:
-            # loop = asyncio.get_event_loop()
-            # return await loop.run_in_executor(None, executor.execute, scenario_state)
-            # No entanto, o padrão do HELM é que executor.execute já retorna um awaitable ou lida com o async
-            # diretamente se o modelo cliente for async.
-            # Se executor.execute já é uma corrotina:
-            # return await executor.execute(scenario_state)
-            
-            # A forma como estava (usando loop.run_in_executor) é uma maneira segura de chamar
-            # código bloqueante de um contexto async. Se executor.execute() já for uma corrotina
-            # (async def), então seria `await executor.execute(scenario_state)`.
-            # Vou manter a sua implementação original, assumindo que executor.execute é bloqueante.
-            loop = asyncio.get_event_loop() # Garante que temos o loop do thread atual
+            loop = asyncio.get_event_loop()
             return await loop.run_in_executor(None, executor.execute, scenario_state)
         except Exception as e:
             hlog(f"STRATEGY CRITICAL: Model query execution failed: {e}\n{traceback.format_exc()}")
-            # Propagar a exceção para que _evaluate_async possa tratá-la (ou retornar lista vazia)
             raise
