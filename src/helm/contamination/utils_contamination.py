@@ -1,5 +1,7 @@
 import spacy
+import spacy.cli
 import numpy as np
+import importlib.util
 from dataclasses import replace
 from typing import Dict, List, Tuple, Any
 
@@ -32,9 +34,16 @@ class UtilsContamination:
     @staticmethod
     def get_choices(example: Any) -> List[str]:
         """
-        Extracts a list of choices from a HELM Instance or a dictionary.
-        Tries various common structures for multiple-choice questions.
+            Extracts a list of choices from a HELM Instance or a dictionary.
+            Tries various common structures for multiple-choice questions.
+
+            Args:
+                example (Any): The input object or dictionary containing choices.
+
+            Returns:
+                List[str]: A list of choice strings.
         """
+
         if hasattr(example, "references") and example.references:
             return [ref.output.text for ref in example.references if hasattr(ref, "output") and hasattr(ref.output, "text")]
 
@@ -67,9 +76,16 @@ class UtilsContamination:
     @staticmethod
     def get_answer_index(example: Any) -> int:
         """
-        Extracts the 0-based index of the correct answer from a HELM Instance or dict.
-        Handles various ways correct answers are specified.
+            Extracts the 0-based index of the correct answer from a HELM Instance or dict.
+            Handles various ways correct answers are specified.
+
+            Args:
+                example (Any): A HELM instance or dictionary containing the answer.
+
+            Returns:
+                int: The index of the correct answer, or -1 if not found.
         """
+
         alphabet = "abcdefghijklmnopqrstuvwxyz123456789"
 
         if hasattr(example, "references") and example.references:
@@ -122,8 +138,15 @@ class UtilsContamination:
     @staticmethod
     def get_question_text(example: Any) -> str:
         """
-        Extracts the main question text from a HELM Instance or dictionary.
+            Extracts the main question text from a HELM Instance or dictionary.
+
+            Args:
+                example (Any): A HELM instance or dictionary containing the question.
+
+            Returns:
+                str: The question text or a default warning string.
         """
+
         if hasattr(example, "input") and hasattr(example.input, "text"):
             return example.input.text
 
@@ -140,9 +163,17 @@ class UtilsContamination:
     @staticmethod
     def get_prompt_fragments(strategy_key: str, language: str) -> Dict[str, str]:
         """
-        Loads prompt fragments for a given strategy and language.
-        Falls back to English if the specified language is not found.
+            Loads prompt fragments for a given strategy and language.
+            Falls back to English if the specified language is not found.
+
+            Args:
+                strategy_key (str): Key identifying the contamination strategy.
+                language (str): Language code (e.g., "en", "pt").
+
+            Returns:
+                Dict[str, str]: A dictionary with prompt fragments.
         """
+
         if strategy_key not in PROMPT_CONFIGS_MASTER:
             hlog(f"UTIL ERROR: Prompt configuration for strategy '{strategy_key}' not found.")
             return {}
@@ -165,9 +196,17 @@ class UtilsContamination:
         default_max_len: int = DEFAULT_MODEL_MAX_CONTEXT_TOKENS_UTIL
     ) -> int:
         """
-        Determines the maximum sequence length for a model.
-        Prioritizes ModelDeployment, then AutoTokenizer, then a default.
+            Determines the maximum sequence length for a model.
+            Prioritizes ModelDeployment, then AutoTokenizer, then a default.
+
+            Args:
+                model_deployment_name (str): Name of the deployed model.
+                default_max_len (int, optional): Default context length if detection fails.
+
+            Returns:
+                int: The determined maximum number of tokens.
         """
+
         model_max_len = default_max_len
         primary_source_found = False
         try:
@@ -222,9 +261,17 @@ class UtilsContamination:
     @staticmethod
     def create_generation_adapter_spec(original_adapter_spec: Any, generation_method_params: Dict[str, Any]) -> Any:
         """
-        Creates a new AdapterSpec configured for generation, updating specified parameters.
-        Ensures 'method' is set to 'generation'.
+            Creates a new AdapterSpec configured for generation, updating specified parameters.
+            Ensures 'method' is set to 'generation'.
+
+            Args:
+                original_adapter_spec (Any): The base adapter spec to copy from.
+                generation_method_params (Dict[str, Any]): Parameters to override.
+
+            Returns:
+                Any: A new AdapterSpec instance.
         """
+
         params_to_update = generation_method_params.copy()
         params_to_update.setdefault("method", "generation")
 
@@ -247,10 +294,18 @@ class UtilsContamination:
         max_allowable_prompt_tokens: int
     ) -> Tuple[bool, int]:
         """
-        Checks if the tokenized prompt_text fits within max_allowable_prompt_tokens.
-        Returns a tuple: (is_valid_length, number_of_prompt_tokens).
-        Returns (False, -1) if tokenization fails.
+            Checks if the tokenized prompt_text fits within max_allowable_prompt_tokens.
+            
+            Args:
+                prompt_text (str): The prompt to check.
+                model_name_for_tokenizer (str): Model name for tokenizer reference.
+                tokenizer_service (TokenizerService): Tokenizer service instance.
+                max_allowable_prompt_tokens (int): Token limit.
+
+            Returns:
+                Tuple[bool, int]: A tuple (fits_within_limit, num_tokens), or (False, -1) on error.
         """
+
         try:
             tokenization_request = TokenizationRequest(text=prompt_text, tokenizer=model_name_for_tokenizer)
             tokenization_result: TokenizationRequestResult = tokenizer_service.tokenize(tokenization_request)
@@ -267,8 +322,17 @@ class UtilsContamination:
         split: str = "test"
     ) -> List[Dict[str, Any]]:
         """
-        Formats calculated metrics into the list of dictionaries expected by HELM.
+            Formats calculated metrics into the list of dictionaries expected by HELM.
+
+            Args:
+                calculated_metrics (Dict[str, float]): Metric names and values.
+                strategy_metric_name_prefix (str): Prefix for each metric name.
+                split (str, optional): Dataset split (e.g., "test").
+
+            Returns:
+                List[Dict[str, Any]]: List of formatted metric entries.
         """
+
         final_helm_stats: List[Dict[str, Any]] = []
         for metric_name, metric_value in calculated_metrics.items():
             metric_value_rounded = np.round(metric_value, 2)
@@ -286,12 +350,21 @@ class UtilsContamination:
             })
         return final_helm_stats
 
-    @staticmethod
     def get_spacy_tagger(language: str) -> Any:
         """
-        Loads and returns a spaCy language model for POS tagging.
-        Disables unnecessary components (parser, NER) for speed.
+            Loads a spaCy language model for POS tagging.
+
+            Args:
+                language (str): Language code for the model to load.
+
+            Returns:
+                Any: A spaCy language model (Language object).
+
+            Raises:
+                ValueError: If the language code is not supported.
+                ImportError: If spaCy is not installed.
         """
+        
         normalized_lang = language.lower().split('_')[0]
         model_name = UtilsContamination.SPACY_MODEL_MAP.get(normalized_lang)
 
@@ -301,14 +374,16 @@ class UtilsContamination:
 
         try:
             hlog(f"UTIL INFO: Attempting to load spaCy model: {model_name} for language {normalized_lang}")
+            if importlib.util.find_spec(model_name) is None:
+                hlog(f"UTIL INFO: spaCy model '{model_name}' not found. Downloading...")
+                spacy.cli.download(model_name)
+
             return spacy.load(model_name, disable=["parser", "ner"])
+
         except ImportError:
             hlog("UTIL ERROR: spaCy library not installed. Please install it: pip install spacy")
             raise
-        except OSError:
-            hlog(f"UTIL ERROR: spaCy model '{model_name}' not found. "
-                 f"Please download it: python -m spacy download {model_name}")
-            raise 
+
         except Exception as e:
-            hlog(f"UTIL ERROR: An unexpected error occurred while loading spaCy model {model_name}: {e}")
+            hlog(f"UTIL ERROR: Failed to load spaCy model '{model_name}': {e}")
             raise

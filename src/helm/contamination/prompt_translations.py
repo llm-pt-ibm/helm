@@ -1,3 +1,7 @@
+"""
+This class standardizes and stores prompt snippets used in benchmark data contamination evaluation strategies.
+Currently, it supports the languages of benchmarks covered by HELM, including English (en), Portuguese (pt), and Chinese (zh).
+"""
 
 TS_GUESSING_BASE = {
     "en": {"instruction": "Fill in the [MASK] in the sentence:", "sentence_template": "\"{masked_sentence}\"", "answer_prefix": "Answer: "},

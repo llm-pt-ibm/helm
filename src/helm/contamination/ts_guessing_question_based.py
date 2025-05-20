@@ -40,6 +40,20 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         language: str,
         tokenizer_service: TokenizerService
     ) -> List[Dict[str, Any]]:
+        """
+            Entry point for synchronous evaluation. Wraps the asynchronous evaluation.
+
+            Args:
+                executor: The executor to use for running model queries.
+                benchmark_path: Path to the benchmark data.
+                scenario_state: The scenario state containing instances and adapter specifications.
+                language: Language code for the evaluation (e.g., "en", "pt").
+                tokenizer_service: Tokenizer service used for token counting.
+
+            Returns:
+                A list of dictionaries containing evaluation metrics and statistics.
+        """
+
         return asyncio.run(self._evaluate_async(
             executor,
             benchmark_path,
@@ -56,6 +70,20 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         language: str,
         tokenizer_service: TokenizerService
     ) -> List[Dict[str, Any]]:
+        """
+            Asynchronous implementation of the evaluation logic.
+
+            Args:
+                executor: The executor to use for running model queries.
+                benchmark_path: Path to the benchmark data.
+                scenario_state: The scenario state containing instances and adapter specifications.
+                language: Language code for the evaluation (e.g., "en", "pt").
+                tokenizer_service: Tokenizer service used for token counting.
+
+            Returns:
+                A list of dictionaries with formatted HELM statistics based on contamination detection.
+        """
+
         self.language = language.lower().split('_')[0]
         tagger: Optional[spacy.language.Language] = None
 
@@ -122,7 +150,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                 scenario_state.adapter_spec, generation_params
             )
             
-            max_allowable_prompt_tokens = model_max_length - self.MAX_OUTPUT_TOKENS_BASE - self.TOKENIZER_BUFFER_BASE
+            max_allowable_prompt_tokens = model_max_length - self.MAX_OUTPUT_TOKENS - self.TOKENIZER_BUFFER
 
             for data_point_item in shuffled_data_points:
                 original_rs_idx = data_point_item.get("original_request_state_index", -1)
@@ -235,6 +263,17 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             return final_helm_stats
 
     def _filter_data(self, raw_instances: List[Instance], scenario_state_for_context) -> List[Dict[str, Any]]:
+        """
+            Filters raw instances to retain only those with sufficient question content.
+
+            Args:
+                raw_instances: List of Instance objects from the scenario.
+                scenario_state_for_context: Scenario state used to recover original request state index.
+
+            Returns:
+                A list of dictionaries with `text_to_mask` and the corresponding request state index.
+        """
+
         data_points: List[Dict[str, Any]] = []
 
         for i, instance in enumerate(raw_instances):
@@ -266,6 +305,18 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         tagger: spacy.language.Language,
         prompt_components: Dict[str, str]
     ) -> Tuple[str, str]:
+        """
+            Builds the masked-word prompt for a given example.
+
+            Args:
+                example_item: Dictionary containing the original text and metadata.
+                tagger: spaCy language model used to perform POS tagging.
+                prompt_components: Predefined fragments used to construct the final prompt.
+
+            Returns:
+                A tuple (final_prompt, masked_word), or ("failed", "") if masking fails.
+        """
+
         try:
             text_to_process = example_item.get("text_to_mask")
             if not text_to_process or not isinstance(text_to_process, str):
@@ -310,6 +361,16 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             return "failed", ""
 
     def _process_response(self, full_response_text: str) -> str:
+        """
+            Processes the model's raw response and extracts the predicted word.
+
+            Args:
+                full_response_text: The raw completion text returned by the model.
+
+            Returns:
+                The cleaned, predicted word or phrase from the model's response.
+        """
+
         try:
             if not full_response_text:
                 return ""

@@ -36,6 +36,10 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         self._check_nltk_punkt()
 
     def _check_nltk_punkt(self):
+        """
+        Verifies that the NLTK 'punkt' tokenizer is available. Logs a warning if not found.
+        """
+
         try:
             sent_tokenize("Test sentence for NLTK punkt check.")
         except LookupError:
@@ -53,6 +57,20 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         language: str,
         tokenizer_service: TokenizerService
     ) -> List[Dict[str, Any]]:
+        """
+            Entry point to run the contamination evaluation synchronously.
+            
+            Args:
+                executor: Object used to run model queries.
+                benchmark_path: Path to the benchmark dataset.
+                scenario_state: Contains request states and adapter specification.
+                language: Language code for evaluation.
+                tokenizer_service: Service to tokenize prompts for length checks.
+            
+            Returns:
+                A list of contamination evaluation results formatted as dictionaries.
+        """
+
         return asyncio.run(self._evaluate_async(
             executor,
             benchmark_path,
@@ -69,6 +87,21 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         language: str,
         tokenizer_service: TokenizerService
     ) -> List[Dict[str, Any]]:
+        """
+            Main asynchronous routine that evaluates model contamination using
+            a multiple-choice guessing strategy.
+            
+            Args:
+                executor: Object responsible for executing model queries.
+                benchmark_path: Path to the benchmark data.
+                scenario_state: Contains original request states and adapter info.
+                language: The language code (e.g., "en").
+                tokenizer_service: Used to check prompt length constraints.
+            
+            Returns:
+                A list of metric results indicating potential contamination.
+        """
+
         self.language = language.lower().split('_')[0]
 
         with htrack_block(f"{self.STRATEGY_DISPLAY_NAME} contamination evaluation for language '{self.language}'"):
@@ -267,6 +300,16 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             return final_helm_stats
 
     def _filter_data(self, scenario_state) -> List[Dict[str, Any]]:
+        """
+            Filters valid multiple-choice instances from scenario state for evaluation.
+            
+            Args:
+                scenario_state: Contains the original request states from a benchmark.
+            
+            Returns:
+                A list of dictionary items containing valid instances to be evaluated.
+        """
+
         data_points: List[Dict[str, Any]] = []
         for i, request_state_item in enumerate(scenario_state.request_states):
             try:
@@ -294,6 +337,21 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         return data_points
 
     def _build_prompt(self, example_item: Dict[str, Any], prompt_components: Dict[str, str]) -> Tuple[str, str, str, str]:
+        """
+        Constructs the instruction and user text with one incorrect option masked.
+        
+        Args:
+            example_item: Dictionary representing one multiple-choice question instance.
+            prompt_components: Dictionary with text fragments for building prompts.
+        
+        Returns:
+            A tuple containing:
+                - Instruction string.
+                - User prompt with [MASK] token.
+                - Original text of the masked incorrect option.
+                - Letter (A, B, ...) of the incorrect option that was masked.
+        """
+
         try:
             part_instr_fill = prompt_components.get("instruction_fill_option", "Fill [MASK] in option")
             part_instr_knowledge = prompt_components.get("instruction_knowledge", "Use knowledge.")
@@ -340,6 +398,17 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             return "failed", "", "", ""
 
     def _process_response(self, response_text_input: str, masked_option_letter_param: str) -> str:
+        """
+            Cleans and extracts the main content from the model's raw text response.
+
+            Args:
+                response_text_input: Raw response text from the model.
+                masked_option_letter_param: Letter (e.g., 'A', 'B') indicating the masked option prefix to remove.
+
+            Returns:
+                The processed response string with prefixes, mask tokens, brackets, and quotes removed,
+        """
+
         try:
             if not response_text_input: return ""
             processed_text = str(response_text_input).strip()
