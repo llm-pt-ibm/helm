@@ -9,13 +9,14 @@ from helm.common.hierarchical_logger import hlog
 from helm.benchmark.model_deployment_registry import get_model_deployment, ModelDeployment
 from helm.common.tokenization_request import TokenizationRequest, TokenizationRequestResult
 from helm.benchmark.window_services.tokenizer_service import TokenizerService
+
 from .prompt_translations import TS_GUESSING_BASE, TS_GUESSING_MULTICHOICE
 
-
 PROMPT_CONFIGS_MASTER = {
-    "ts_guessing_base": TS_GUESSING_BASE,
-    "ts_guessing_multichoice": TS_GUESSING_MULTICHOICE
+    "ts_guessing_question_base": TS_GUESSING_BASE,
+    "ts_guessing_question_multichoice": TS_GUESSING_MULTICHOICE,
 }
+
 
 class UtilsContamination:
     """
@@ -34,177 +35,297 @@ class UtilsContamination:
     @staticmethod
     def get_choices(example: Any) -> List[str]:
         """
-            Extracts a list of choices from a HELM Instance or a dictionary.
-            Tries various common structures for multiple-choice questions.
+        Extracts a list of choices from a HELM Instance or a dictionary.
+        Tries various common structures for multiple-choice questions.
 
-            Args:
-                example (Any): The input object or dictionary containing choices.
+        Args:
+            example (Any): The input object or dictionary containing choices.
 
-            Returns:
-                List[str]: A list of choice strings.
+        Returns:
+            List[str]: A list of choice strings. Returns empty list if no choices found.
         """
 
+        choices_found: List[str] = []
+
         if hasattr(example, "references") and example.references:
-            return [ref.output.text for ref in example.references if hasattr(ref, "output") and hasattr(ref.output, "text")]
+            choices_found = [
+                str(ref.output.text)
+                for ref in example.references
+                if hasattr(ref, "output") and hasattr(ref.output, "text")
+            ]
+            if choices_found:
+                return choices_found
 
         if hasattr(example, "output_mapping") and example.output_mapping and isinstance(example.output_mapping, dict):
-            return list(example.output_mapping.values())
+            choices_found = [str(val) for val in example.output_mapping.values()]
+            if choices_found:
+                return choices_found
 
         if isinstance(example, dict):
             if "choices" in example:
-                if isinstance(example["choices"], dict) and "text" in example["choices"] and isinstance(example["choices"]["text"], list):
-                    return example["choices"]["text"]
-                elif isinstance(example["choices"], list):
-                    return example["choices"]
+                choices_val = example["choices"]
+                if isinstance(choices_val, list):
+                    return [str(c) for c in choices_val]
+                elif isinstance(choices_val, dict) and "text" in choices_val and isinstance(choices_val["text"], list):
+                    return [str(c) for c in choices_val["text"]]
             if "endings" in example and isinstance(example["endings"], list):
-                return example["endings"]
+                return [str(e) for e in example["endings"]]
             if "options" in example and isinstance(example["options"], list):
-                return example["options"]
+                return [str(o) for o in example["options"]]
 
-        for i in range(1, 5):
-            opt_key = f"option{i}"
-            if hasattr(example, opt_key):
-                opts = [getattr(example, f"option{j}") for j in range(1,5) if hasattr(example, f"option{j}")]
-                return opts
-            elif isinstance(example, dict) and opt_key in example:
-                opts = [example[f"option{j}"] for j in range(1,5) if f"option{j}" in example]
-                return opts
-        
-        hlog(f"UTIL WARNING: Could not extract choices from example: {type(example)}")
+            alpha_keys = [chr(ord("A") + i) for i in range(26)]  # A-Z
+            num_keys_0_idx = [str(i) for i in range(10)]  # 0-9
+
+            current_options = []
+            for key in alpha_keys:
+                if key in example and isinstance(example[key], str):
+                    current_options.append(example[key])
+                elif key.lower() in example and isinstance(example[key.lower()], str):
+                    current_options.append(example[key.lower()])
+                elif current_options:
+                    break
+            if current_options:
+                return current_options
+
+            for key in num_keys_0_idx:
+                if key in example and isinstance(example[key], str):
+                    current_options.append(example[key])
+                elif current_options:
+                    break
+            if current_options:
+                return current_options
+
+        # Fallback to optionN as object attributes (less common for dicts)
+        if not isinstance(example, dict):
+            for i in range(1, 7):
+                opt_key = f"option{i}"
+                if hasattr(example, opt_key):
+                    val = getattr(example, opt_key)
+                    if isinstance(val, str):
+                        choices_found.append(val)
+                    if not hasattr(example, f"option{i+1}") and choices_found:
+                        break
+                elif choices_found:
+                    break
+            if choices_found:
+                return choices_found
+
+        hlog(
+            f"UTIL WARNING: Could not extract choices from example of type: {type(example)}. "
+            f"Consider inspecting its structure. Keys/attrs might be: {list(example.keys()) if isinstance(example, dict) else dir(example)}"
+        )
         return []
 
     @staticmethod
     def get_answer_index(example: Any) -> int:
         """
-            Extracts the 0-based index of the correct answer from a HELM Instance or dict.
-            Handles various ways correct answers are specified.
+        Extracts the 0-based index of the correct answer from a HELM Instance or dict.
+        Handles various ways correct answers are specified.
 
-            Args:
-                example (Any): A HELM instance or dictionary containing the answer.
+        Args:
+            example (Any): A HELM instance or dictionary containing the answer.
 
-            Returns:
-                int: The index of the correct answer, or -1 if not found.
+        Returns:
+            int: The 0-based index of the correct answer, or -1 if not found.
         """
 
-        alphabet = "abcdefghijklmnopqrstuvwxyz123456789"
+        alphabet_options = "abcdefghijklmnopqrstuvwxyz"
+        numeric_options_1_indexed = "123456789"
 
         if hasattr(example, "references") and example.references:
             for i, ref in enumerate(example.references):
                 if hasattr(ref, "tags") and "correct" in ref.tags:
                     return i
 
-        if hasattr(example, "output_mapping") and example.output_mapping and \
-           hasattr(example, "references") and example.references:
+        if (
+            hasattr(example, "output_mapping")
+            and example.output_mapping
+            and hasattr(example, "references")
+            and example.references
+        ):
             correct_text_from_ref = None
             for ref in example.references:
-                if hasattr(ref, "tags") and "correct" in ref.tags and \
-                   hasattr(ref, "output") and hasattr(ref.output, "text"):
-                    correct_text_from_ref = ref.output.text
+                if (
+                    hasattr(ref, "tags")
+                    and "correct" in ref.tags
+                    and hasattr(ref, "output")
+                    and hasattr(ref.output, "text")
+                ):
+                    correct_text_from_ref = str(ref.output.text)
                     break
             if correct_text_from_ref and isinstance(example.output_mapping, dict):
-                for letter_or_idx, text_val in example.output_mapping.items():
-                    if text_val == correct_text_from_ref:
-                        try:
-                            return int(letter_or_idx)
-                        except ValueError:
-                            if isinstance(letter_or_idx, str):
-                                key_lower = letter_or_idx.lower()
-                                if key_lower in alphabet:
-                                    return alphabet.index(key_lower)
-                        hlog(f"UTIL WARNING: Found correct text in output_mapping but key '{letter_or_idx}' is not a recognized index format.")
-
+                choices_list = UtilsContamination.get_choices(example)
+                if choices_list:
+                    try:
+                        return choices_list.index(correct_text_from_ref)
+                    except ValueError:
+                        hlog(
+                            f"UTIL WARNING: Correct text '{correct_text_from_ref}' from reference not found in choices extracted by get_choices."
+                        )
+                else:  # Fallback to try to interpret keys from output_mapping
+                    for key, text_val in example.output_mapping.items():
+                        if str(text_val) == correct_text_from_ref:
+                            if isinstance(key, int):
+                                return key
+                            if isinstance(key, str):
+                                key_lower = key.lower()
+                                if key_lower.isdigit():
+                                    return int(key_lower)
+                                if len(key_lower) == 1 and key_lower in alphabet_options:
+                                    return alphabet_options.index(key_lower)
+                            hlog(
+                                f"UTIL WARNING: Found correct text in output_mapping for key '{key}', but key is not a recognized index format."
+                            )
 
         if isinstance(example, dict):
             if "answerKey" in example:
-                key = str(example["answerKey"]).lower()
-                if key.isdigit():
-                    return int(key) -1 if int(key) > 0 else 0
-                elif len(key) == 1 and key in alphabet:
-                    return alphabet.index(key)
+                key_val = str(example["answerKey"]).strip().lower()
+                if len(key_val) == 1 and key_val in alphabet_options:
+                    return alphabet_options.index(key_val)
+                elif key_val in numeric_options_1_indexed:
+                    return int(key_val) - 1
+                elif key_val.isdigit():
+                    return int(key_val)
+
             if "label" in example:
                 try:
                     return int(example["label"])
-                except ValueError:
-                    hlog(f"UTIL WARNING: Could not convert 'label' field ('{example['label']}') to int.")
-            if "answer" in example:
-                if isinstance(example["answer"], int):
-                    return example["answer"]
-                if isinstance(example["answer"], str) and example["answer"].isdigit():
-                    return int(example["answer"])
+                except (ValueError, TypeError):
+                    hlog(
+                        f"UTIL WARNING: Could not convert 'label' field ('{example['label']}') to int for answer index."
+                    )
 
-        hlog(f"UTIL WARNING: Could not determine answer index for example: {type(example)}")
+            if "answer" in example:
+                ans_val = example["answer"]
+                if isinstance(ans_val, int):
+                    return ans_val
+                if isinstance(ans_val, str):
+                    key_ans = ans_val.strip().lower()
+                    if len(key_ans) == 1 and key_ans in alphabet_options:
+                        return alphabet_options.index(key_ans)
+                    if key_ans in numeric_options_1_indexed:
+                        return int(key_ans) - 1
+                    if key_ans.isdigit():
+                        return int(key_ans)
+
+            if (
+                "answer" in example
+                and "choices" in example
+                and isinstance(example["answer"], str)
+                and isinstance(example["choices"], list)
+            ):
+                try:
+                    return example["choices"].index(example["answer"])
+                except ValueError:
+                    hlog(f"UTIL WARNING: Answer text '{example['answer']}' not found in 'choices' list.")
+
+        hlog(
+            f"UTIL WARNING: Could not determine answer index for example of type: {type(example)}. "
+            f"Consider inspecting its structure. Keys/attrs might be: {list(example.keys()) if isinstance(example, dict) else dir(example)}"
+        )
         return -1
 
     @staticmethod
     def get_question_text(example: Any) -> str:
         """
-            Extracts the main question text from a HELM Instance or dictionary.
+        Extracts the main question text or context from a HELM Instance or dictionary.
 
-            Args:
-                example (Any): A HELM instance or dictionary containing the question.
+        Args:
+            example (Any): A HELM instance or dictionary.
 
-            Returns:
-                str: The question text or a default warning string.
+        Returns:
+            str: The question text/context or a default warning string.
         """
 
-        if hasattr(example, "input") and hasattr(example.input, "text"):
+        if hasattr(example, "input") and hasattr(example.input, "text") and isinstance(example.input.text, str):
             return example.input.text
 
         if isinstance(example, dict):
-            for key in ["question", "text", "query", "prompt", "goal", "passage", "context", "sentence"]:
-                if key in example and isinstance(example[key], str):
-                    if isinstance(example[key], dict) and "stem" in example[key]: return example[key]["stem"]
-                    return example[key]
-            if 'input' in example and isinstance(example['input'], str): return example['input']
+            preferred_keys = [
+                "question",
+                "text",
+                "prompt",
+                "context",
+                "passage",
+                "sentence",
+                "goal",
+                "query",
+                "input",
+                "inputs",
+            ]
+            for key in preferred_keys:
+                if key in example:
+                    val = example[key]
+                    if isinstance(val, str) and val.strip():
+                        return val
+                    if isinstance(val, dict) and "stem" in val and isinstance(val["stem"], str) and val["stem"].strip():
+                        return val["stem"]
 
-        hlog(f"UTIL WARNING: Could not extract question text from example: {type(example)}")
+            other_potential_keys = ["problem", "story", "article"]
+            for key in other_potential_keys:
+                if key in example and isinstance(example[key], str) and example[key].strip():
+                    return example[key]
+
+        hlog(
+            f"UTIL WARNING: Could not extract question text from example of type: {type(example)}. "
+            f"Consider inspecting its structure. Keys/attrs might be: {list(example.keys()) if isinstance(example, dict) else dir(example)}"
+        )
         return "Unknown question or context"
 
     @staticmethod
     def get_prompt_fragments(strategy_key: str, language: str) -> Dict[str, str]:
         """
-            Loads prompt fragments for a given strategy and language.
-            Falls back to English if the specified language is not found.
+        Loads prompt fragments for a given strategy and language.
+        Falls back to English if the specified language is not found.
 
-            Args:
-                strategy_key (str): Key identifying the contamination strategy.
-                language (str): Language code (e.g., "en", "pt").
+        Args:
+            strategy_key (str): Key identifying the contamination strategy (e.g., "base", "multichoice").
+                                Should match keys in PROMPT_CONFIGS_MASTER.
+            language (str): Language code (e.g., "en", "pt").
 
-            Returns:
-                Dict[str, str]: A dictionary with prompt fragments.
+        Returns:
+            Dict[str, str]: A dictionary with prompt fragments. Empty if not found.
         """
 
         if strategy_key not in PROMPT_CONFIGS_MASTER:
-            hlog(f"UTIL ERROR: Prompt configuration for strategy '{strategy_key}' not found.")
+            hlog(
+                f"UTIL ERROR: Prompt configuration for strategy_key '{strategy_key}' not found in PROMPT_CONFIGS_MASTER. "
+                f"Available keys: {list(PROMPT_CONFIGS_MASTER.keys())}"
+            )
             return {}
 
         lang_prompts_for_strategy = PROMPT_CONFIGS_MASTER[strategy_key]
-        normalized_lang = language.lower().split('_')[0]
+        normalized_lang = language.lower().split("_")[0].split("-")[0]
 
         if normalized_lang in lang_prompts_for_strategy:
             return lang_prompts_for_strategy[normalized_lang]
         elif "en" in lang_prompts_for_strategy:
-            hlog(f"UTIL WARNING: Language '{language}' (normalized to '{normalized_lang}') not found for strategy '{strategy_key}'. Falling back to English.")
+            hlog(
+                f"UTIL WARNING: Language '{language}' (normalized to '{normalized_lang}') not found for strategy '{strategy_key}'. "
+                "Falling back to English prompts."
+            )
             return lang_prompts_for_strategy["en"]
         else:
-            hlog(f"UTIL ERROR: English fallback not found for strategy '{strategy_key}' when language '{language}' is missing.")
+            hlog(
+                f"UTIL ERROR: English fallback prompts not found for strategy '{strategy_key}' when language '{language}' (normalized: {normalized_lang}) is missing."
+            )
             return {}
 
     @staticmethod
     def determine_model_max_length(
-        model_deployment_name: str,
-        default_max_len: int = DEFAULT_MODEL_MAX_CONTEXT_TOKENS_UTIL
+        model_deployment_name: str, default_max_len: int = DEFAULT_MODEL_MAX_CONTEXT_TOKENS_UTIL
     ) -> int:
         """
-            Determines the maximum sequence length for a model.
-            Prioritizes ModelDeployment, then AutoTokenizer, then a default.
+        Determines the maximum sequence length for a model.
+        Prioritizes ModelDeployment, then AutoTokenizer, then a default.
 
-            Args:
-                model_deployment_name (str): Name of the deployed model.
-                default_max_len (int, optional): Default context length if detection fails.
+        Args:
+            model_deployment_name (str): Name of the deployed model from HELM's registry.
+            default_max_len (int, optional): Default context length if detection fails.
+                                             Defaults to UtilsContamination.DEFAULT_MODEL_MAX_CONTEXT_TOKENS_UTIL.
 
-            Returns:
-                int: The determined maximum number of tokens.
+        Returns:
+            int: The determined maximum number of tokens for the model's context.
         """
 
         model_max_len = default_max_len
@@ -214,76 +335,100 @@ class UtilsContamination:
             if model_deployment.max_sequence_length is not None and model_deployment.max_sequence_length > 0:
                 model_max_len = model_deployment.max_sequence_length
                 primary_source_found = True
-                hlog(f"Util: Using model_max_length from ModelDeployment.max_sequence_length: {model_max_len} for {model_deployment_name}")
+                hlog(
+                    f"UTIL INFO: Using model_max_length from ModelDeployment.max_sequence_length: {model_max_len} for {model_deployment_name}"
+                )
             elif model_deployment.max_request_length is not None and model_deployment.max_request_length > 0:
                 model_max_len = model_deployment.max_request_length
                 primary_source_found = True
-                hlog(f"Util: Using model_max_length from ModelDeployment.max_request_length: {model_max_len} for {model_deployment_name}")
-            
-            if not primary_source_found:
-                hlog(f"UTIL WARNING: max_sequence_length/max_request_length not set or invalid in ModelDeployment for '{model_deployment_name}'.")
-                raise ValueError("Relevant max length fields not in ModelDeployment or invalid.")
+                hlog(
+                    f"UTIL INFO: Using model_max_length from ModelDeployment.max_request_length: {model_max_len} for {model_deployment_name}"
+                )
 
-        except (ValueError, KeyError) as e_model_reg:
-            hlog(f"UTIL INFO: Could not get max length from ModelDeployment for '{model_deployment_name}': {e_model_reg}. "
-                 "Falling back to AutoTokenizer or default method.")
+            if not primary_source_found:
+                hlog(
+                    f"UTIL WARNING: max_sequence_length/max_request_length not set or invalid in ModelDeployment for '{model_deployment_name}'. Attempting fallback to AutoTokenizer."
+                )
+
+        except KeyError as e_model_reg:
+            hlog(
+                f"UTIL INFO: Could not get ModelDeployment (model not in registry or other KeyError) for '{model_deployment_name}': {e_model_reg}. Falling back to AutoTokenizer."
+            )
+        except Exception as e_model_reg_other:
+            hlog(
+                f"UTIL WARNING: Error accessing ModelDeployment for '{model_deployment_name}': {e_model_reg_other}. Falling back to AutoTokenizer."
+            )
+
+        if not primary_source_found:
             temp_tokenizer_for_max_len = None
             try:
                 from transformers import AutoTokenizer
-                hlog(f"UTIL Fallback: Loading AutoTokenizer for: {model_deployment_name} to get model_max_length.")
-                temp_tokenizer_for_max_len = AutoTokenizer.from_pretrained(model_deployment_name, trust_remote_code=True)
-                
-                tokenizer_max_len_attr = getattr(temp_tokenizer_for_max_len, 'model_max_length', default_max_len)
 
-                if not isinstance(tokenizer_max_len_attr, int) or tokenizer_max_len_attr <= 0 or tokenizer_max_len_attr > 2_000_000:
-                    hlog(f"UTIL WARNING: Fallback tokenizer for {model_deployment_name} reported an unusual max length ({tokenizer_max_len_attr}). "
-                         f"Using util default: {default_max_len}.")
-                    model_max_len = default_max_len
-                else:
+                hlog(
+                    f"UTIL INFO: Fallback: Loading AutoTokenizer for '{model_deployment_name}' to get model_max_length."
+                )
+                temp_tokenizer_for_max_len = AutoTokenizer.from_pretrained(
+                    model_deployment_name, trust_remote_code=True
+                )
+
+                tokenizer_max_len_attr = getattr(temp_tokenizer_for_max_len, "model_max_length", model_max_len)
+
+                if (
+                    isinstance(tokenizer_max_len_attr, int)
+                    and tokenizer_max_len_attr > 0
+                    and tokenizer_max_len_attr < 2_000_000
+                ):
                     model_max_len = tokenizer_max_len_attr
-                    hlog(f"Util: Using model_max_length from AutoTokenizer.model_max_length: {model_max_len} for {model_deployment_name}")
+                    hlog(
+                        f"UTIL INFO: Using model_max_length from AutoTokenizer.model_max_length: {model_max_len} for {model_deployment_name}"
+                    )
+                else:
+                    hlog(
+                        f"UTIL WARNING: Fallback AutoTokenizer for {model_deployment_name} reported an unusual max length ({tokenizer_max_len_attr}). "
+                        f"Using previously determined or default value: {model_max_len}."
+                    )
             except ImportError:
-                hlog(f"UTIL ERROR: transformers library not installed. Cannot use AutoTokenizer fallback for '{model_deployment_name}'. Using util default: {default_max_len}.")
-                model_max_len = default_max_len
+                hlog(
+                    f"UTIL WARNING: 'transformers' library not installed. Cannot use AutoTokenizer fallback for '{model_deployment_name}'. Using: {model_max_len}."
+                )
             except Exception as e_hf_tokenizer:
-                hlog(f"UTIL ERROR: Fallback using AutoTokenizer for '{model_deployment_name}' also failed: {e_hf_tokenizer}. "
-                     f"Using util default model_max_length: {default_max_len}.")
-                model_max_len = default_max_len
+                hlog(
+                    f"UTIL WARNING: Fallback using AutoTokenizer for '{model_deployment_name}' also failed: {e_hf_tokenizer}. "
+                    f"Using previously determined or default value: {model_max_len}."
+                )
             finally:
                 if temp_tokenizer_for_max_len:
                     del temp_tokenizer_for_max_len
-        
-        if model_max_len <=0:
-             hlog(f"UTIL WARNING: Determined model_max_length is non-positive ({model_max_len}) for {model_deployment_name}. Resetting to util default {default_max_len}.")
-             model_max_len = default_max_len
+
+        if not (isinstance(model_max_len, int) and model_max_len > 0):
+            hlog(
+                f"UTIL WARNING: Determined model_max_length ({model_max_len}) for '{model_deployment_name}' is invalid. Resetting to util default: {UtilsContamination.DEFAULT_MODEL_MAX_CONTEXT_TOKENS_UTIL}."
+            )
+            model_max_len = UtilsContamination.DEFAULT_MODEL_MAX_CONTEXT_TOKENS_UTIL
         return model_max_len
 
     @staticmethod
     def create_generation_adapter_spec(original_adapter_spec: Any, generation_method_params: Dict[str, Any]) -> Any:
         """
-            Creates a new AdapterSpec configured for generation, updating specified parameters.
-            Ensures 'method' is set to 'generation'.
+        Creates a new AdapterSpec configured for generation, updating specified parameters.
+        Ensures 'method' is always set to 'generation'.
 
-            Args:
-                original_adapter_spec (Any): The base adapter spec to copy from.
-                generation_method_params (Dict[str, Any]): Parameters to override.
+        Args:
+            original_adapter_spec (Any): The base AdapterSpec (or any object with similar structure that supports dataclasses.replace).
+            generation_method_params (Dict[str, Any]): Parameters to override/set in the new AdapterSpec.
+                                                        'method' will be set to 'generation'. Any other
+                                                        AdapterSpec fields (like instructions, input_prefix, etc.)
+                                                        should be explicitly provided in this dict if they
+                                                        need to be changed from the original_adapter_spec
+                                                        or set to specific values for generation.
 
-            Returns:
-                Any: A new AdapterSpec instance.
+        Returns:
+            Any: A new AdapterSpec-like instance.
         """
 
         params_to_update = generation_method_params.copy()
-        params_to_update.setdefault("method", "generation")
+        params_to_update["method"] = "generation"
 
-        fields_to_potentially_clear_or_set = [
-            "instructions", "input_prefix", "output_prefix", "input_suffix", "output_suffix",
-            "max_tokens", "temperature", "stop_sequences", "num_outputs", "random",
-            "global_prefix", "global_suffix", "reference_prefix", "reference_suffix"
-        ]
-        for field in fields_to_potentially_clear_or_set:
-            if field not in params_to_update:
-                pass
-        
         return replace(original_adapter_spec, **params_to_update)
 
     @staticmethod
@@ -291,20 +436,27 @@ class UtilsContamination:
         prompt_text: str,
         model_name_for_tokenizer: str,
         tokenizer_service: TokenizerService,
-        max_allowable_prompt_tokens: int
+        max_allowable_prompt_tokens: int,
     ) -> Tuple[bool, int]:
         """
-            Checks if the tokenized prompt_text fits within max_allowable_prompt_tokens.
-            
-            Args:
-                prompt_text (str): The prompt to check.
-                model_name_for_tokenizer (str): Model name for tokenizer reference.
-                tokenizer_service (TokenizerService): Tokenizer service instance.
-                max_allowable_prompt_tokens (int): Token limit.
+        Checks if the tokenized prompt_text fits within max_allowable_prompt_tokens.
 
-            Returns:
-                Tuple[bool, int]: A tuple (fits_within_limit, num_tokens), or (False, -1) on error.
+        Args:
+            prompt_text (str): The prompt string to check.
+            model_name_for_tokenizer (str): Identifier for the tokenizer (e.g., model deployment name).
+            tokenizer_service (TokenizerService): HELM's tokenizer service instance.
+            max_allowable_prompt_tokens (int): The maximum number of tokens the prompt can have.
+
+        Returns:
+            Tuple[bool, int]: (True, num_tokens) if within limit, (False, num_tokens) if over limit,
+                              or (False, -1) if tokenization fails or max_allowable_prompt_tokens is non-positive.
         """
+
+        if max_allowable_prompt_tokens <= 0:
+            hlog(
+                f"UTIL WARNING: max_allowable_prompt_tokens ({max_allowable_prompt_tokens}) is non-positive. Skipping length check and assuming invalid length."
+            )
+            return False, 0
 
         try:
             tokenization_request = TokenizationRequest(text=prompt_text, tokenizer=model_name_for_tokenizer)
@@ -312,78 +464,116 @@ class UtilsContamination:
             num_prompt_tokens = len(tokenization_result.tokens)
             return num_prompt_tokens <= max_allowable_prompt_tokens, num_prompt_tokens
         except Exception as e_tok_service:
-            hlog(f"UTIL ERROR: TokenizerService failed for tokenizer '{model_name_for_tokenizer}'. Prompt: '{prompt_text[:100]}...'. Error: {e_tok_service}")
+            hlog(
+                f"UTIL ERROR: TokenizerService failed for tokenizer '{model_name_for_tokenizer}'. "
+                f"Prompt (first 100 chars): '{prompt_text[:100]}...'. Error: {e_tok_service}"
+            )
             return False, -1
 
     @staticmethod
     def format_helm_stats(
-        calculated_metrics: Dict[str, float],
-        strategy_metric_name_prefix: str,
-        split: str = "test"
+        calculated_metrics: Dict[str, float], strategy_metric_name_prefix: str, split: str = "test"
     ) -> List[Dict[str, Any]]:
         """
-            Formats calculated metrics into the list of dictionaries expected by HELM.
+        Formats calculated metrics into the list of dictionaries (serializable Stats) expected by HELM.
 
-            Args:
-                calculated_metrics (Dict[str, float]): Metric names and values.
-                strategy_metric_name_prefix (str): Prefix for each metric name.
-                split (str, optional): Dataset split (e.g., "test").
+        Args:
+            calculated_metrics (Dict[str, float]): Dictionary of metric names to their float values.
+            strategy_metric_name_prefix (str): A prefix string for each metric name,
+                                               e.g., "contamination (strategy_name". The closing parenthesis
+                                               and metric name will be appended by this function.
+            split (str, optional): The dataset split (e.g., "test", "valid"). Defaults to "test".
 
-            Returns:
-                List[Dict[str, Any]]: List of formatted metric entries.
+        Returns:
+            List[Dict[str, Any]]: A list of formatted metric entries (PinnedStat-like dicts).
         """
 
         final_helm_stats: List[Dict[str, Any]] = []
-        for metric_name, metric_value in calculated_metrics.items():
+        for metric_name_suffix, metric_value in calculated_metrics.items():
             metric_value_rounded = np.round(metric_value, 2)
+            sum_squared_rounded = np.round(metric_value_rounded**2, 2)
 
-            final_helm_stats.append({
-                "name": {"name": f"{strategy_metric_name_prefix} {metric_name})", "split": split}, 
-                "count": 1, 
-                "sum": metric_value_rounded,
-                "sum_squared": np.round(metric_value_rounded**2, 2),
-                "min": metric_value_rounded,
-                "max": metric_value_rounded,
-                "mean": metric_value_rounded, 
-                "variance": 0.0, 
-                "stddev": 0.0,
-            })
+            full_metric_name_str = f"{strategy_metric_name_prefix} {metric_name_suffix})"
+
+            final_helm_stats.append(
+                {
+                    "name": {"name": full_metric_name_str, "split": split},
+                    "count": 1,
+                    "sum": metric_value_rounded,
+                    "sum_squared": sum_squared_rounded,
+                    "min": metric_value_rounded,
+                    "max": metric_value_rounded,
+                    "mean": metric_value_rounded,
+                    "variance": 0.0,
+                    "stddev": 0.0,
+                }
+            )
         return final_helm_stats
 
+    @staticmethod
     def get_spacy_tagger(language: str) -> Any:
         """
-            Loads a spaCy language model for POS tagging.
+        Loads and returns a spaCy language model for POS tagging.
+        Attempts to download the model if not found.
+        Disables unnecessary components (parser, NER) for speed.
 
-            Args:
-                language (str): Language code for the model to load.
+        Args:
+            language (str): Language code (e.g., "en", "pt", "zh").
 
-            Returns:
-                Any: A spaCy language model (Language object).
+        Returns:
+            spacy.language.Language: A spaCy language model instance.
 
-            Raises:
-                ValueError: If the language code is not supported.
-                ImportError: If spaCy is not installed.
+        Raises:
+            ValueError: If the language code is not supported or model name cannot be determined.
+            ImportError: If spaCy library is not installed.
+            Exception: For other errors during model download or loading.
         """
-        
-        normalized_lang = language.lower().split('_')[0]
+
+        normalized_lang = language.lower().split("_")[0].split("-")[0]
         model_name = UtilsContamination.SPACY_MODEL_MAP.get(normalized_lang)
 
         if not model_name:
-            hlog(f"UTIL ERROR: No spaCy model mapped for language '{language}' (normalized to '{normalized_lang}').")
+            hlog(
+                f"UTIL ERROR: No spaCy model mapped in SPACY_MODEL_MAP for language '{language}' (normalized to '{normalized_lang}')."
+            )
             raise ValueError(f"SpaCy model not configured for language: {language}")
 
         try:
-            hlog(f"UTIL INFO: Attempting to load spaCy model: {model_name} for language {normalized_lang}")
-            if importlib.util.find_spec(model_name) is None:
-                hlog(f"UTIL INFO: spaCy model '{model_name}' not found. Downloading...")
-                spacy.cli.download(model_name)
+            hlog(f"UTIL INFO: Attempting to load spaCy model: '{model_name}' for language '{normalized_lang}'")
+
+            model_is_installed = False
+            try:
+                spacy.load(model_name, disable=["parser", "ner"])
+                model_is_installed = True
+                hlog(f"UTIL INFO: spaCy model '{model_name}' found and loadable.")
+            except OSError:
+                hlog(f"UTIL INFO: spaCy model '{model_name}' not found by spacy.load(). Attempting download...")
+
+            if not model_is_installed:
+                try:
+                    spacy.cli.download(model_name)
+                    hlog(f"UTIL INFO: spaCy model '{model_name}' downloaded successfully via spacy.cli.download.")
+                except SystemExit as e_download:
+                    if e_download.code == 0:
+                        hlog(
+                            f"UTIL INFO: spacy.cli.download for '{model_name}' exited with code 0 (likely success or already present)."
+                        )
+                    else:
+                        hlog(
+                            f"UTIL ERROR: Failed to download spaCy model '{model_name}'. spacy.cli.download exited with code: {e_download.code}"
+                        )
+                        raise Exception(f"Failed to download spaCy model {model_name}") from e_download
+                except Exception as e_download_other:
+                    hlog(
+                        f"UTIL ERROR: An unexpected error occurred during spaCy model download for '{model_name}': {e_download_other}"
+                    )
+                    raise Exception(f"Unexpected error downloading spaCy model {model_name}") from e_download_other
 
             return spacy.load(model_name, disable=["parser", "ner"])
 
         except ImportError:
-            hlog("UTIL ERROR: spaCy library not installed. Please install it: pip install spacy")
+            hlog("UTIL CRITICAL: spaCy library not installed. Please install it: pip install spacy")
             raise
-
         except Exception as e:
-            hlog(f"UTIL ERROR: Failed to load spaCy model '{model_name}': {e}")
-            raise
+            hlog(f"UTIL CRITICAL: Failed to ensure availability of or load spaCy model '{model_name}': {e}")
+            raise Exception(f"Could not load or download spaCy model {model_name}") from e

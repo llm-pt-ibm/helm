@@ -2,41 +2,66 @@ from helm.contamination.ts_guessing_question_based import TSGuessingQuestionBase
 from helm.contamination.ts_guessing_question_multichoice import TSGuessingQuestionMultiChoiceContaminationEvaluator
 from helm.benchmark.window_services.tokenizer_service import TokenizerService
 from helm.common.hierarchical_logger import hlog
+from typing import List, Dict, Any
+from helm.benchmark.runner import ScenarioState
+from helm.benchmark.executor import Executor
 
 
 class ContaminationEvaluator:
     """
-    Class responsible for evaluating contamination using different strategies
-    based on the specified method.
+    Class responsible for dispatching to and executing different contamination
+    evaluation strategies based on the specified method.
     """
 
-    def evaluate(self, executor, method: str, benchmark_path: str, scenario_state, language: str, tokenizer_service) -> list[dict]:
+    def evaluate(
+        self,
+        executor: Executor,
+        method: str,
+        benchmark_path: str,
+        scenario_state: ScenarioState,
+        language: str,
+        tokenizer_service: TokenizerService,
+    ) -> List[Dict[str, Any]]:
         """
-        Evaluate contamination using the specified method.
+        Selects and runs the appropriate contamination evaluation strategy.
 
         Args:
-            method: The contamination evaluation method to use.
-            benchmark_path: Path to the benchmark data.
-            scenario_state: The current scenario state.
-            language: defines the prompt language.
+            executor: The HELM executor for running model queries.
+            method: The contamination evaluation method/strategy to use (e.g., "base", "multichoice").
+            benchmark_path: Path to the benchmark data or relevant context.
+            scenario_state: The current scenario state (should be a deep copy).
+            language: Defines the language for prompts and language-specific processing.
+            tokenizer_service: The service for tokenizing text.
 
         Returns:
-            List containing contamination evaluation statistics.
+            A list of dictionaries, where each dictionary represents a PinnedStat
+            (serializable version of Stat) for contamination metrics.
+            Returns an empty list if the method is unknown or evaluation fails.
         """
-        # Select the appropriate evaluator based on the method
-        if method == "ts_guessing_question_base":
+        evaluator: Any
+
+        if method == TSGuessingQuestionBasedContaminationEvaluator.STRATEGY_NAME:
             evaluator = TSGuessingQuestionBasedContaminationEvaluator()
-        elif method == "ts_guessing_question_multichoice":
+        elif method == TSGuessingQuestionMultiChoiceContaminationEvaluator.STRATEGY_NAME:
             evaluator = TSGuessingQuestionMultiChoiceContaminationEvaluator()
         else:
-            hlog(f"Unknown contamination evaluation method: {method}")
+            hlog(
+                f"CONTAMINATION_EVALUATOR ERROR: Unknown contamination evaluation method specified: '{method}'. "
+                "Available methods depend on registered strategy classes and their STRATEGY_NAME."
+            )
             return []
 
         # Run the selected evaluator
-        return evaluator.evaluate(
-            executor=executor, 
-            benchmark_path=benchmark_path, 
-            scenario_state=scenario_state, 
-            language=language,
-            tokenizer_service=tokenizer_service
-        )
+        try:
+            return evaluator.evaluate(
+                executor=executor,
+                benchmark_path=benchmark_path,
+                scenario_state=scenario_state,
+                language=language,
+                tokenizer_service=tokenizer_service,
+            )
+        except Exception as e:
+            hlog(
+                f"CONTAMINATION_EVALUATOR CRITICAL: An error occurred while running the '{method}' contamination strategy: {e}\n{traceback.format_exc()}"
+            )
+            return []
