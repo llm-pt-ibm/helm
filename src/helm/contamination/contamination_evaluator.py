@@ -1,3 +1,5 @@
+import traceback
+
 from helm.contamination.ts_guessing_question_based import TSGuessingQuestionBasedContaminationEvaluator
 from helm.contamination.ts_guessing_question_multichoice import TSGuessingQuestionMultiChoiceContaminationEvaluator
 from helm.benchmark.window_services.tokenizer_service import TokenizerService

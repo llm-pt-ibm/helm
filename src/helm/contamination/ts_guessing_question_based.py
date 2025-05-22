@@ -130,7 +130,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             generation_params = {
                 "max_tokens": self.MAX_OUTPUT_TOKENS,
                 "temperature": self.GENERATION_TEMPERATURE,
-                "stop_sequences": ["\n", ".", ","],
+                "stop_sequences": [],
                 "num_outputs": 1,
                 "output_prefix": prompt_components.get("answer_prefix", "Answer: "),
                 "instructions": "",
@@ -185,16 +185,14 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         continue
 
                     new_input = replace(current_request_state.instance.input, text=final_prompt_text)
-                    new_instance = replace(
-                        current_request_state.instance, input=new_input, references=[]
-                    )
+                    new_instance = replace(current_request_state.instance, input=new_input, references=[])
 
                     new_request = replace(
                         current_request_state.request,
                         prompt=final_prompt_text,
                         max_tokens=self.MAX_OUTPUT_TOKENS,
                         temperature=self.GENERATION_TEMPERATURE,
-                        stop_sequences=["\n", ".", ","],  
+                        stop_sequences=[],
                     )
 
                     prepared_rs = replace(
@@ -292,7 +290,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             hlog(
                 f"STRATEGY INFO: Evaluation completed for language '{self.language}'. "
                 f"Processed {len(processed_instance_results)} instances. "
-            ) 
+            )
             return final_helm_stats
 
     def _filter_data(self, scenario_state: ScenarioState) -> List[Dict[str, Any]]:
@@ -385,7 +383,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                     f"are out of bounds for text length {len(text_to_process)}. Text: '{text_to_process[:100]}...'. "
                     "This might indicate issues with tokenization or the source text."
                 )
- 
+
                 masked_text_fallback = text_to_process.replace(word_to_mask_original_case, "[MASK]", 1)
                 if masked_text_fallback == text_to_process:
                     hlog(
@@ -433,7 +431,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             processed_text = str(full_response_text).strip()
 
             if self.language == "zh":
-                punctuation_zh = "。，！？；：（）《》「」『』“”‘’ 、\n\t" + " " 
+                punctuation_zh = "。，！？；：（）《》「」『』“”‘’ 、\n\t" + " "
                 cleaned_text = "".join(char for char in processed_text if char not in punctuation_zh)
                 first_meaningful_part = cleaned_text[: self.MAX_OUTPUT_TOKENS]
             else:
@@ -451,9 +449,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
             )
             return ""
 
-    async def _query_model(
-        self, scenario_state: ScenarioState, executor: Executor
-    ) -> ScenarioState:
+    async def _query_model(self, scenario_state: ScenarioState, executor: Executor) -> ScenarioState:
         """Executa as requisições ao modelo de forma assíncrona."""
 
         try:

@@ -8,9 +8,9 @@ from typing import List, Dict, Any, Tuple
 
 from helm.common.hierarchical_logger import hlog, htrack_block
 from nltk.tokenize import sent_tokenize
-from helm.common.tokenization_request import TokenizationRequest 
+from helm.common.tokenization_request import TokenizationRequest
 from helm.benchmark.window_services.tokenizer_service import TokenizerService
-from helm.benchmark.runner import ScenarioState, RequestState 
+from helm.benchmark.runner import ScenarioState, RequestState
 from helm.benchmark.executor import Executor
 from .utils_contamination import UtilsContamination
 
@@ -51,12 +51,12 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             hlog(f"UTIL WARNING: NLTK punkt check failed with an unexpected error: {e}")
 
     def evaluate(
-        self, 
+        self,
         executor: Executor,
-        benchmark_path: str, 
+        benchmark_path: str,
         scenario_state: ScenarioState,
-        language: str, 
-        tokenizer_service: TokenizerService
+        language: str,
+        tokenizer_service: TokenizerService,
     ) -> List[Dict[str, Any]]:
         """
         Entry point to run the contamination evaluation synchronously.
@@ -72,17 +72,15 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             A list of contamination evaluation results formatted as dictionaries (PinnedStat-like).
         """
 
-        return asyncio.run(self._evaluate_async(
-            executor, benchmark_path, scenario_state, language, tokenizer_service
-        ))
+        return asyncio.run(self._evaluate_async(executor, benchmark_path, scenario_state, language, tokenizer_service))
 
     async def _evaluate_async(
-        self, 
+        self,
         executor: Executor,
-        benchmark_path: str, 
+        benchmark_path: str,
         scenario_state: ScenarioState,
-        language: str, 
-        tokenizer_service: TokenizerService
+        language: str,
+        tokenizer_service: TokenizerService,
     ) -> List[Dict[str, Any]]:
         """
         Main asynchronous routine that evaluates model contamination using
@@ -153,14 +151,14 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 "stop_sequences": [],
                 "num_outputs": 1,
                 "output_prefix": "Answer: ",
-                "instructions": "", 
-                "input_prefix": "", 
-                "input_suffix": "", 
+                "instructions": "",
+                "input_prefix": "",
+                "input_suffix": "",
                 "output_suffix": "",
-                "global_prefix": "", 
-                "global_suffix": "", 
-                "reference_prefix": "", 
-                "reference_suffix": ""
+                "global_prefix": "",
+                "global_suffix": "",
+                "reference_prefix": "",
+                "reference_suffix": "",
             }
             generation_adapter_spec = UtilsContamination.create_generation_adapter_spec(
                 scenario_state.adapter_spec, generation_params
@@ -232,9 +230,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                     skipped_instance_count += 1
 
             if skipped_instance_count > 0:
-                hlog(
-                    f"STRATEGY INFO: Skipped {skipped_instance_count} instances during preparation."
-                )
+                hlog(f"STRATEGY INFO: Skipped {skipped_instance_count} instances during preparation.")
             if not valid_request_states_for_execution:
                 hlog("STRATEGY INFO: No instances prepared for execution after processing all data points.")
                 return []
@@ -245,7 +241,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             )
 
             try:
-                response_scenario_state: ScenarioState = await self._query_model(execution_scenario_state, executor)               
+                response_scenario_state: ScenarioState = await self._query_model(execution_scenario_state, executor)
             except Exception as e:
                 hlog(f"STRATEGY CRITICAL: Error during model query phase: {e}\n{traceback.format_exc()}")
                 return []
@@ -255,18 +251,26 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 try:
                     raw_response_text = ""
                     processed_response = ""
-                    current_gold_reference = reference_texts_for_masked_slots[i] if i < len(reference_texts_for_masked_slots) else "ERROR_GOLD_REF_INDEX_OUT_OF_BOUNDS"
-                    current_masked_letter = masked_option_letters[i] if i < len(masked_option_letters) else "ERROR_MASKED_LETTER_INDEX_OUT_OF_BOUNDS"
+                    current_gold_reference = (
+                        reference_texts_for_masked_slots[i]
+                        if i < len(reference_texts_for_masked_slots)
+                        else "ERROR_GOLD_REF_INDEX_OUT_OF_BOUNDS"
+                    )
+                    current_masked_letter = (
+                        masked_option_letters[i]
+                        if i < len(masked_option_letters)
+                        else "ERROR_MASKED_LETTER_INDEX_OUT_OF_BOUNDS"
+                    )
 
                     if response_state.result and response_state.result.completions:
                         if response_state.result.completions[0].text is not None:
                             raw_response_text = response_state.result.completions[0].text.strip()
-                            processed_response = self._process_response(raw_response_text, current_masked_letter) 
+                            processed_response = self._process_response(raw_response_text, current_masked_letter)
                         else:
                             hlog(f"DEBUG MULTICHOICE [Inst {i}] RAW_RESPONSE: text is None")
                     else:
                         hlog(f"DEBUG MULTICHOICE [Inst {i}] RAW_RESPONSE: No result or completions found.")
-                    
+
                     instance_id = getattr(valid_request_states_for_execution[i].instance, "id", f"proc_inst_{i}")
                     processed_instance_results.append(
                         {
@@ -276,18 +280,21 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         }
                     )
                 except IndexError:
-                     hlog(f"STRATEGY ERROR: IndexError processing result for instance {i}. List length mismatch with gold/masked_letter lists.")
+                    hlog(
+                        f"STRATEGY ERROR: IndexError processing result for instance {i}. List length mismatch with gold/masked_letter lists."
+                    )
                 except Exception as e:
                     hlog(
                         f"STRATEGY ERROR: Error processing result for prepared instance index {i}: {e}\n{traceback.format_exc()}"
                     )
-            
-            if not processed_instance_results and len(valid_request_states_for_execution) > 0 :
-                 hlog("STRATEGY WARNING: All model responses resulted in empty processed results, but requests were sent.")
-            elif not processed_instance_results:
-                 hlog("STRATEGY INFO: No instances were processed or yielded results.")
-                 return []
 
+            if not processed_instance_results and len(valid_request_states_for_execution) > 0:
+                hlog(
+                    "STRATEGY WARNING: All model responses resulted in empty processed results, but requests were sent."
+                )
+            elif not processed_instance_results:
+                hlog("STRATEGY INFO: No instances were processed or yielded results.")
+                return []
 
             gold_references = [res["answer_to_compare"] for res in processed_instance_results]
             model_generations = [res["model_prediction"] for res in processed_instance_results]
@@ -295,8 +302,9 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
             exact_match_score = 0.0
             if any(model_generations):
                 if gold_references:
-                    exact_match_score = sum(gen == gold for gen, gold in zip(model_generations, gold_references)) / len(gold_references)
-
+                    exact_match_score = sum(gen == gold for gen, gold in zip(model_generations, gold_references)) / len(
+                        gold_references
+                    )
 
             calculated_metrics = {"exact_match": exact_match_score, "rouge_l_f1": 0.0}
 
@@ -316,7 +324,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 except Exception as e:
                     hlog(f"STRATEGY ERROR: ROUGE Scorer calculation failed: {e}\n{traceback.format_exc()}")
 
-            strategy_metric_prefix = f"contamination ({self.STRATEGY_DISPLAY_NAME}" 
+            strategy_metric_prefix = f"contamination ({self.STRATEGY_DISPLAY_NAME}"
             final_helm_stats = UtilsContamination.format_helm_stats(
                 calculated_metrics, strategy_metric_prefix, split="test"
             )
@@ -369,7 +377,9 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         f"during filtering due to missing/invalid data (Q_OK: {q_ok}, Choices_Count: {c_list_len}, AnswerIdx_OK: {idx_ok})."
                     )
             except Exception as e:
-                hlog(f"STRATEGY ERROR: Error filtering instance from request_state {i} (ID: {getattr(instance, 'id', 'N/A')}): {e}\n{traceback.format_exc()}")
+                hlog(
+                    f"STRATEGY ERROR: Error filtering instance from request_state {i} (ID: {getattr(instance, 'id', 'N/A')}): {e}\n{traceback.format_exc()}"
+                )
         return data_points
 
     def _build_prompt(
@@ -380,9 +390,16 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
         """
 
         try:
-            part_instr_fill = prompt_components.get("instruction_fill_option", "Your task is to complete the [MASK] in option")
-            part_instr_knowledge = prompt_components.get("instruction_knowledge", "Use your knowledge to figure out what the original text was.")
-            part_instr_rule = prompt_components.get("instruction_rule", "Provide only the text that should replace [MASK]. Do not include the option letter or any other surrounding text.")
+            part_instr_fill = prompt_components.get(
+                "instruction_fill_option", "Your task is to complete the [MASK] in option"
+            )
+            part_instr_knowledge = prompt_components.get(
+                "instruction_knowledge", "Use your knowledge to figure out what the original text was."
+            )
+            part_instr_rule = prompt_components.get(
+                "instruction_rule",
+                "Provide only the text that should replace [MASK]. Do not include the option letter or any other surrounding text.",
+            )
             part_header_q = prompt_components.get("header_question", "Question:")
             part_header_opts = prompt_components.get("header_options", "Options:")
             part_footer_reply = prompt_components.get("footer_reply", "The original text for the masked option is:")
@@ -413,7 +430,7 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
 
             masked_choice_idx = np.random.choice(incorrect_option_indices)
             original_text_of_masked_option = str(choices_list[masked_choice_idx])
-            masked_option_letter = self.alphabet[masked_choice_idx % len(self.alphabet)] 
+            masked_option_letter = self.alphabet[masked_choice_idx % len(self.alphabet)]
 
             instruction_text_segment = (
                 f"{part_instr_fill} {masked_option_letter}.\n{part_instr_knowledge}\n\n{part_instr_rule}"
@@ -426,11 +443,11 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                         f"STRATEGY WARNING: Number of choices ({len(choices_list)}) exceeds alphabet size ({len(self.alphabet)}) "
                         f"for instance {example_item.get('id', 'Unknown')}. Truncating options display in prompt."
                     )
-                    break 
+                    break
                 letter = self.alphabet[i]
                 option_content = "[MASK]" if i == masked_choice_idx else f"{str(choice_text_item)}"
                 options_lines_segment += f"\n{letter}: {option_content}"
-            
+
             user_text_segment = f"{part_header_q} {original_question_text}\n{part_header_opts}{options_lines_segment}\n\n{part_footer_reply}"
 
             return instruction_text_segment, user_text_segment, original_text_of_masked_option, masked_option_letter
@@ -451,16 +468,17 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
                 return ""
             processed_text = str(response_text_input).strip()
 
-            expected_model_prefix = "Answer: " 
+            expected_model_prefix = "Answer: "
             if processed_text.lower().startswith(expected_model_prefix.lower()):
-                processed_text = processed_text[len(expected_model_prefix):].strip()
-                        
+                processed_text = processed_text[len(expected_model_prefix) :].strip()
+
             try:
-                if 'nltk' in globals() and hasattr(globals()['nltk'], 'download') and sent_tokenize:
-                     sentences = sent_tokenize(processed_text)
-                     if sentences: processed_text = sentences[0]
+                if "nltk" in globals() and hasattr(globals()["nltk"], "download") and sent_tokenize:
+                    sentences = sent_tokenize(processed_text)
+                    if sentences:
+                        processed_text = sentences[0]
             except LookupError:
-                pass 
+                pass
             except Exception as e_sent_tok:
                 hlog(f"STRATEGY DEBUG: sent_tokenize failed during response processing: {e_sent_tok}")
 
@@ -468,9 +486,10 @@ class TSGuessingQuestionMultiChoiceContaminationEvaluator:
 
             if processed_text.startswith("[") and processed_text.endswith("]"):
                 processed_text = processed_text[1:-1].strip()
-            
-            if (processed_text.startswith('"') and processed_text.endswith('"')) or \
-               (processed_text.startswith("'") and processed_text.endswith("'")):
+
+            if (processed_text.startswith('"') and processed_text.endswith('"')) or (
+                processed_text.startswith("'") and processed_text.endswith("'")
+            ):
                 processed_text = processed_text[1:-1].strip()
 
             return processed_text
