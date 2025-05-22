@@ -534,9 +534,15 @@ class UtilsContamination:
 
         if not model_name:
             hlog(
-                f"UTIL ERROR: No spaCy model mapped in SPACY_MODEL_MAP for language '{language}' (normalized to '{normalized_lang}')."
+                f"UTIL WARNING: No spaCy model mapped in SPACY_MODEL_MAP for language '{language}' "
+                f"(normalized to '{normalized_lang}'). Falling back to English model."
             )
-            raise ValueError(f"SpaCy model not configured for language: {language}")
+            normalized_lang = "en"
+            model_name = UtilsContamination.SPACY_MODEL_MAP.get(normalized_lang)
+            
+            if not model_name:
+                hlog("UTIL ERROR: English fallback model not found in SPACY_MODEL_MAP.")
+                raise ValueError("English fallback model not configured in SPACY_MODEL_MAP")
 
         try:
             hlog(f"UTIL INFO: Attempting to load spaCy model: '{model_name}' for language '{normalized_lang}'")
