@@ -72,6 +72,7 @@ class TSGuessingQuestionBasedContaminationEvaluator:
         """
 
         self.language = language.lower().split("_")[0].split("-")[0]
+        check_prompt_length_primary = True
         tagger: Optional[spacy.language.Language] = None
 
         with htrack_block(f"{self.STRATEGY_DISPLAY_NAME} contamination evaluation for language '{self.language}'"):
@@ -168,12 +169,23 @@ class TSGuessingQuestionBasedContaminationEvaluator:
                         skipped_instance_count += 1
                         continue
 
-                    is_valid_len, num_prompt_tokens = UtilsContamination.check_prompt_length(
-                        final_prompt_text,
-                        model_deployment_name_from_spec,
-                        tokenizer_service,
-                        max_allowable_prompt_tokens,
-                    )
+                    if check_prompt_length_primary:
+                        try:
+                            is_valid_len, num_prompt_tokens = UtilsContamination.check_prompt_length_tokenization_request(
+                                final_prompt_text, model_deployment_name_from_spec, tokenizer_service, max_allowable_prompt_tokens
+                            )
+                        except Exception:
+                            check_prompt_length_primary = False
+                            hlog(f"STRATEGY INFO: Switching to fallback tokenization for '{model_deployment_name_from_spec}' due to primary tokenizer failure.")
+                            
+                            is_valid_len, num_prompt_tokens = UtilsContamination.check_prompt_length_fallback_gpt2(
+                                final_prompt_text, model_deployment_name_from_spec, max_allowable_prompt_tokens
+                            )
+                    else:
+                        is_valid_len, num_prompt_tokens = UtilsContamination.check_prompt_length_fallback_gpt2(
+                            final_prompt_text, model_deployment_name_from_spec, max_allowable_prompt_tokens
+                        )
+
                     if not is_valid_len:
                         log_msg = f"STRATEGY DEBUG: Instance from original_rs_idx {original_rs_idx} skipped. "
                         if num_prompt_tokens == -1:

@@ -472,34 +472,22 @@ class UtilsContamination:
         return replace(original_adapter_spec, **params_to_update)
 
     @staticmethod
-    def check_prompt_length(
+    def check_prompt_length_tokenization_request(
         prompt_text: str,
         model_name_for_tokenizer: str,
         tokenizer_service: TokenizerService,
         max_allowable_prompt_tokens: int,
     ) -> Tuple[bool, int]:
         """
-        Checks if the tokenized prompt_text fits within max_allowable_prompt_tokens.
-
-        Args:
-            prompt_text (str): The prompt string to check.
-            model_name_for_tokenizer (str): Identifier for the tokenizer (e.g., model deployment name).
-            tokenizer_service (TokenizerService): HELM's tokenizer service instance.
-            max_allowable_prompt_tokens (int): The maximum number of tokens the prompt can have.
-
-        Returns:
-            Tuple[bool, int]: (True, num_tokens) if within limit, (False, num_tokens) if over limit,
-                              or (False, -1) if tokenization fails or max_allowable_prompt_tokens is non-positive.
+        Checks if the tokenized prompt_text fits within max_allowable_prompt_tokens using HELM TokenizerService.
         """
-        num_prompt_tokens: int = -1
-        tokenization_method_used: str = "None"
 
         if not isinstance(prompt_text, str):
             hlog(f"UTIL ERROR: prompt_text must be a string, got {type(prompt_text)}. Length check aborted.")
             return False, -1 
 
         if max_allowable_prompt_tokens <= 0:
-            hlog(f"UTIL WARNING: max_allowable_prompt_tokens ({max_allowable_prompt_tokens}) is non-positive. Assuming prompt is too long.")
+            hlog(f"UTIL WARNING: max_allowable_prompt_tokens ({max_allowable_prompt_tokens}) is non-positive.")
             return False, 0
         
         try:
@@ -508,48 +496,54 @@ class UtilsContamination:
 
             if tokenization_result.success and tokenization_result.tokens is not None:
                 num_prompt_tokens = len(tokenization_result.tokens)
-                tokenization_method_used = "HELM TokenizerService"
+                fits_within_limit = num_prompt_tokens <= max_allowable_prompt_tokens
+                return fits_within_limit, num_prompt_tokens
             else:
                 error_msg = getattr(tokenization_result, 'error', 'Unknown error')
-                hlog(f"UTIL WARNING: {tokenization_method_used if num_prompt_tokens != -1 else 'HELM TokenizerService'} "
-                     f"for '{model_name_for_tokenizer}' not successful. Error: {error_msg}. Attempting GPT-2 fallback.")
+                hlog(f"HELM TokenizerService failed for '{model_name_for_tokenizer}': {error_msg}. Switching to fallback.")
+                raise Exception(f"HELM tokenization failed: {error_msg}")
+                
         except Exception as e_helm_service:
-            hlog(f"UTIL WARNING: HELM TokenizerService for '{model_name_for_tokenizer}' failed: {type(e_helm_service).__name__} - {str(e_helm_service)[:200]}. "
-                 "Attempting GPT-2 fallback.")
+            hlog(f"HELM TokenizerService exception for '{model_name_for_tokenizer}': {type(e_helm_service).__name__}. Switching to fallback.")
+            raise
 
-        if num_prompt_tokens == -1:
-            gpt2_tokenizer = UtilsContamination.get_gpt2_fallback_tokenizer()
-            if gpt2_tokenizer:
-                try:
-                    num_prompt_tokens = len(gpt2_tokenizer.encode(prompt_text, add_special_tokens=False))
-                    tokenization_method_used = "GPT-2 Fallback Tokenizer"
-                except Exception as e_gpt2_fallback:
-                    num_prompt_tokens = -1
-                    hlog(f"UTIL WARNING: GPT-2 Fallback Tokenizer for '{model_name_for_tokenizer}' failed: {type(e_gpt2_fallback).__name__} - {str(e_gpt2_fallback)[:200]}. "
-                         "Attempting character heuristic fallback.")
+    @staticmethod  
+    def check_prompt_length_fallback_gpt2(
+        prompt_text: str,
+        model_name_for_tokenizer: str,
+        max_allowable_prompt_tokens: int,
+    ) -> Tuple[bool, int]:
+        """
+        Fallback tokenization using GPT-2 tokenizer and character heuristic.
+        """
+        
+        num_prompt_tokens = -1
 
+        # Try GPT-2 tokenizer first
+        gpt2_tokenizer = UtilsContamination.get_gpt2_fallback_tokenizer()
+        if gpt2_tokenizer:
+            try:
+                num_prompt_tokens = len(gpt2_tokenizer.encode(prompt_text, add_special_tokens=False))
+            except Exception as e_gpt2_fallback:
+                hlog(f"GPT-2 Fallback failed for '{model_name_for_tokenizer}': {type(e_gpt2_fallback).__name__}. Using character heuristic.")
+                num_prompt_tokens = -1
+
+        # Character heuristic fallback
         if num_prompt_tokens == -1:
             try:
                 if not prompt_text:
                     num_prompt_tokens = 0
                 else:
                     num_prompt_tokens = (len(prompt_text) + UtilsContamination.CONSERVATIVE_CHARS_PER_TOKEN_DIVISOR - 1) // UtilsContamination.CONSERVATIVE_CHARS_PER_TOKEN_DIVISOR
-                tokenization_method_used = "Character Heuristic Fallback"
-                hlog(
-                    f"UTIL INFO: Using {tokenization_method_used} for '{model_name_for_tokenizer}'. "
-                    f"Estimated tokens: {num_prompt_tokens} (from {len(prompt_text)} chars / ~{UtilsContamination.CONSERVATIVE_CHARS_PER_TOKEN_DIVISOR} divisor)."
-                )
             except Exception as e_char_fallback:
-                hlog(f"UTIL CRITICAL: Character-based fallback for '{model_name_for_tokenizer}' failed: {type(e_char_fallback).__name__} - {str(e_char_fallback)[:200]}.")
+                hlog(f"Character heuristic failed for '{model_name_for_tokenizer}': {type(e_char_fallback).__name__}.")
                 return False, -1 
 
         if num_prompt_tokens == -1:
-            hlog(f"UTIL CRITICAL: All tokenization methods failed to produce a token count for '{model_name_for_tokenizer}'.")
+            hlog(f"All tokenization methods failed for '{model_name_for_tokenizer}'.")
             return False, -1
 
         fits_within_limit = num_prompt_tokens <= max_allowable_prompt_tokens
-        hlog(f"UTIL INFO: Prompt length check for '{model_name_for_tokenizer}' using {tokenization_method_used}: "
-             f"{num_prompt_tokens} tokens. Limit: {max_allowable_prompt_tokens}. Fits: {fits_within_limit}.")
         return fits_within_limit, num_prompt_tokens
 
     @staticmethod
