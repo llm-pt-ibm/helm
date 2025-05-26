@@ -7,9 +7,6 @@ from helm.common.request import Request
 from helm.common.authentication import Authentication
 from helm.benchmark.model_deployment_registry import get_default_model_deployment_for_model
 
-from helm.common.request import Request
-from helm.common.authentication import Authentication
-
 class LLMJudger:
     def __init__(self, executor_service, judge_model: str = "openai/gpt2", prompt_file: str = "default_prompt.txt"):
         """
@@ -26,25 +23,8 @@ class LLMJudger:
             input_text = prediction.get("input", "")
             model_response = prediction.get("prediction", "")
 
-            # Criação do prompt para o modelo julgador
-            # prompt = (
-            #     "Você é um avaliador rigoroso de respostas geradas por modelos de linguagem. "
-            #     "Sua tarefa é avaliar, de forma objetiva, se a resposta fornecida está correta em relação ao texto de entrada. "
-            #     "Corretude significa o quanto a resposta condiz com a intenção e o conteúdo do texto fornecido como entrada.\n\n"
-            #     f"Entrada:\n{input_text}\n\n"
-            #     f"Resposta do modelo:\n{model_response}\n\n"
-            #     "Agora, com base na entrada e na resposta do modelo, retorne sua avaliação **estritamente** no seguinte formato JSON:\n\n"
-            #     "{\n"
-            #     '  "judgement": 1(quando concorda com o modelo principal) ou 0(quando discorda do modelo principal),\n'
-            #     '  "explanation": "explicação do porquê a resposta está correta ou incorreta"\n'
-            #     "}\n\n"
-            #     "Importante: não adicione nenhum comentário, rótulo, explicação fora do JSON. Apenas imprima esse JSON diretamente como resposta."
-            # )
-
             prompt_tamplate = self._load_prompt_template(self.prompt_file)
             prompt = prompt_tamplate.replace("{input}", input_text).replace("{response}", model_response)
-
-            print(f"==============Prompt: {prompt}====================")
 
             # Chamada ao modelo julgador
             judged_value, explanation = self.call_llm(prompt)
@@ -60,7 +40,6 @@ class LLMJudger:
         return judgements
     
     def call_llm(self, prompt: str) -> tuple[int, str]:
-        
 
         request = Request(
             model=self.judge_model,
@@ -71,7 +50,6 @@ class LLMJudger:
         )
 
         result = self.executor_service.make_request(Authentication(""), request)
-        print(f"Result: {result}")
 
         if not result.success:
             raise Exception(f"LLM Judge request failed: {result.error}")
