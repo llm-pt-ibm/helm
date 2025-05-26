@@ -458,21 +458,31 @@ class Runner:
 
         if not judgements:
             hlog("WARNING: No judgments to evaluate agreement level.")
-            return
+            return  
+        
+        # Filter out malformed or incomplete responses
+        valid_judgements = [
+            j for j in judgements
+            if j.get("explanation") != "Malformed or incomplete response."
+        ]
 
-        total = len(judgements)
+        total_valid = len(valid_judgements)
         agreements = sum(1 for j in judgements if j.get("judgement") == 1)
-        agreement_level = agreements / total if total > 0 else 0.0
+        agreement_level = agreements / total_valid if total_valid > 0 else 0.0
 
-        hlog(f"LLM-Judge Agreement Level: {agreement_level:.2%} ({agreements}/{total})")
+        hlog(f"LLM-Judge Agreement Level: {agreement_level:.2%} ({agreements}/{total_valid})")
 
         # Save the agreement level to file
         output_path = os.path.join(os.path.dirname(judgements_file_path), "llm_judge_agreement_level.json")
+
         write(output_path, json.dumps({
-            "agreement_level": agreement_level,
-            "agreements": agreements,
-            "total_instances": total
+        "agreement_level": agreement_level,
+        "agreements": agreements,
+        "total_valid_instances": total_valid,
+        "total_judged_instances": len(judgements),
+        "invalid_instances": len(judgements) - total_valid,
         }, indent=2))
+
         hlog(f"Saved agreement level to {output_path}")
         return agreement_level
 
