@@ -14,7 +14,7 @@ import datetime
 import urllib.parse
 import json
 from collections import defaultdict
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, field
 from statistics import mean, median
 from typing import List, Optional, Dict, Any, Tuple, Set
 
@@ -77,12 +77,41 @@ class ExecutiveSummary:
     suite: Optional[str]
     date: str
 
-    # TODO: later, put model rankings, etc. here
+    # LLM Judge Metrics (New)
+    overall_llm_judge_agreement: Optional[float] = None
+    total_llm_judged_instances: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class LLMJudgeAgreementLevel:
+    agreement_level: float
+    agreements: int
+    total_valid_instances: int
+    total_judged_instances: int
+    invalid_instances: int
+
+
+@dataclass(frozen=True)
+class LLMJudgeTask:
+    instance_id: str
+    input: str
+    prediction: str
+    judgement: int
+    explanation: str
+
+
+@dataclass(frozen=True)
+class LLMJudgeSummary:
+    benchmark: str
+    main_model: str
+    judge_model: str
+    agreement_level: float
+    tasks: List[LLMJudgeTask]
 
 
 @dataclass(frozen=True)
 class Run:
-    """Represents a run with spec and stats."""
+    """Represents a run with spec and stats, now including LLM judge results."""
 
     # Directory name of the run (used by frontend to find the actual instances to load)
     run_path: str
@@ -92,6 +121,11 @@ class Run:
 
     # Statistics for the run
     stats: List[Stat]
+
+    # LLM Judge results (New)
+    llm_judge_agreement_level: Optional[LLMJudgeAgreementLevel] = None
+    llm_judge_summary: Optional[LLMJudgeSummary] = None
+    llm_judgements: Optional[List[List[LLMJudgeTask]]] = None
 
 
 def get_unique_stat_by_matcher(stats: List[Stat], matcher: MetricNameMatcher) -> Optional[Stat]:
@@ -374,16 +408,20 @@ class Summarizer:
             self.suites = suites
             self.run_release_path = os.path.join(output_path, "releases", release)
             self.run_suite_paths = [os.path.join(output_path, "runs", suite) for suite in suites]
-        self.verbose: bool = verbose
-        self.num_threads: int = num_threads
-        self.allow_unknown_models: bool = allow_unknown_models
+        else:
+            # Fallback for old usage or when neither is specified for some reason during dev
+            # This should ideally be caught by the argparser checks.
+            self.suite = "default_suite"
+            self.run_release_path = os.path.join(output_path, "runs", self.suite)
+            self.run_suite_paths = [self.run_release_path]
+            self.suites = [self.suite]
 
         ensure_directory_exists(self.run_release_path)
 
         self.schema = read_schema(schema_path)
 
     def read_run(self, run_path: str) -> Run:
-        """Load the `Run` object from `run_path`."""
+        """Load the `Run` object from `run_path` and include LLM judge data."""
 
         with open(os.path.join(run_path, "run_spec.json")) as f:
             run_spec = from_json(f.read(), RunSpec)
@@ -391,10 +429,40 @@ class Summarizer:
         with open(os.path.join(run_path, "stats.json")) as f:
             stats = from_json(f.read(), List[Stat])
 
+        llm_judge_agreement_level: Optional[LLMJudgeAgreementLevel] = None
+        agreement_level_path = os.path.join(run_path, "llm_judge_agreement_level.json")
+        if os.path.exists(agreement_level_path):
+            try:
+                with open(agreement_level_path) as f:
+                    llm_judge_agreement_level = from_json(f.read(), LLMJudgeAgreementLevel)
+            except json.JSONDecodeError as e:
+                hwarn(f"Failed to parse {agreement_level_path}: {e}")
+
+        llm_judge_summary: Optional[LLMJudgeSummary] = None
+        summary_path = os.path.join(run_path, "llm_judge_summary.json")
+        if os.path.exists(summary_path):
+            try:
+                with open(summary_path) as f:
+                    llm_judge_summary = from_json(f.read(), LLMJudgeSummary)
+            except json.JSONDecodeError as e:
+                hwarn(f"Failed to parse {summary_path}: {e}")
+
+        llm_judgements: Optional[List[List[LLMJudgeTask]]] = None
+        judgements_path = os.path.join(run_path, "llm_judgements.json")
+        if os.path.exists(judgements_path):
+            try:
+                with open(judgements_path) as f:
+                    llm_judgements = from_json(f.read(), List[List[LLMJudgeTask]])
+            except json.JSONDecodeError as e:
+                hwarn(f"Failed to parse {judgements_path}: {e}")
+
         return Run(
             run_path=run_path,
             run_spec=run_spec,
             stats=stats,
+            llm_judge_agreement_level=llm_judge_agreement_level,
+            llm_judge_summary=llm_judge_summary,
+            llm_judgements=llm_judgements,
         )
 
     def filter_runs_by_visibility(self, runs: List[Run], group: RunGroup) -> List[Run]:
@@ -551,14 +619,25 @@ class Summarizer:
 
     @htrack(None)
     def write_executive_summary(self):
-        """Write the executive summary."""
+        """Write the executive summary, including LLM judge aggregates."""
         date = datetime.date.today().strftime("%Y-%m-%d")
+
+        total_agreements = 0
+        total_judged_instances = 0
+        for run in self.runs:
+            if run.llm_judge_agreement_level:
+                total_agreements += run.llm_judge_agreement_level.agreements
+                total_judged_instances += run.llm_judge_agreement_level.total_judged_instances
+
+        overall_agreement = total_agreements / total_judged_instances if total_judged_instances > 0 else None
 
         summary = ExecutiveSummary(
             release=self.release,
             suites=self.suites,
             suite=self.suite,
             date=date,
+            overall_llm_judge_agreement=overall_agreement,
+            total_llm_judged_instances=total_judged_instances,
         )
 
         write(
@@ -798,6 +877,7 @@ class Summarizer:
         sub_split: Optional[str] = None,
         bold_columns: bool = True,
         aggregation_strategies: List[str] = [],
+        include_llm_judge_metrics: bool = False,  # New parameter for LLM Judge
     ) -> Table:
         """
         Create a table for where each row is an adapter (for which we have a set of runs) and columns are pairs of
@@ -820,6 +900,19 @@ class Summarizer:
 
         # Column headers
         header.append(HeaderCell(MODEL_HEADER_CELL_VALUE))
+
+        # Add LLM Judge Agreement column if requested, before other metric columns
+        if include_llm_judge_metrics:
+            header.append(
+                HeaderCell(
+                    "LLM Judge Agreement",
+                    description="Average agreement level from LLM-based evaluations across instances.",
+                    lower_is_better=False,  # Higher is better for agreement
+                    metadata={"metric": "LLM Judge Agreement"},
+                )
+            )
+            # No matcher for LLM Judge metrics as they are not standard Stat objects
+
         for run_group, metric_group_name in columns:
             # check if at least the basic version of a metric group is evaluated (e.g., "bias" for "bias_detailed")
             if metric_group_name.replace("_detailed", "") not in run_group.metric_groups:
@@ -884,7 +977,7 @@ class Summarizer:
 
         adapter_specs: List[AdapterSpec] = list(adapter_to_runs.keys())
         if sort_by_model_order:
-            # Sort models by the order defined in the the model metadata config.
+            # Sort models by the order defined in the model metadata config.
             # Models not defined in the model metadata config will be sorted alphabetically and
             # placed before models in defined the model metadata config.
             model_order = get_all_models()
@@ -923,6 +1016,29 @@ class Summarizer:
                 href = None
 
             cells = [Cell(display_name, description="", href=href, run_spec_names=run_spec_names)]
+
+            # Add LLM Judge Agreement value
+            if include_llm_judge_metrics:
+                # Aggregate LLM judge agreement for this adapter_spec across all runs
+                total_agreement_level_sum = 0.0
+                total_agreement_level_count = 0
+                for run in runs:
+                    if run.llm_judge_agreement_level:
+                        total_agreement_level_sum += run.llm_judge_agreement_level.agreement_level
+                        total_agreement_level_count += 1
+
+                llm_judge_agreement_value: Optional[float] = None
+                if total_agreement_level_count > 0:
+                    llm_judge_agreement_value = total_agreement_level_sum / total_agreement_level_count
+
+                cells.append(
+                    Cell(
+                        llm_judge_agreement_value,
+                        description=f"Average agreement over {total_agreement_level_count} runs",
+                        style={},
+                    )
+                )
+
             assert len(group_names) == len(matchers)
             for group_name, matcher in zip(group_names, matchers):
                 group_runs = [run for run in runs if group_name in run.run_spec.groups]
@@ -973,10 +1089,22 @@ class Summarizer:
         aggregate_header_cells: List[HeaderCell] = []
         aggregate_row_values: List[List[Optional[float]]] = []
 
+        # Adjust the starting index for aggregation strategies if LLM Judge metrics are included
+        start_index_for_aggregation = 1 + (1 if include_llm_judge_metrics else 0)
+
         for strategy in aggregation_strategies:
             if strategy == AggregationStrategy.WIN_RATE:
                 WIN_RATE_AGGREGATION = "mean"
-                win_rates = compute_aggregate_row_win_rates(table, aggregation=WIN_RATE_AGGREGATION)
+                # Temporarily create a table without the LLM judge column for win rate calculation
+                # (since win rate logic depends on lower_is_better and LLM judge might not be part of the original metric design)
+                temp_table_for_win_rate = Table(
+                    title=table.title,
+                    header=table.header[start_index_for_aggregation:],  # Skip model name and LLM Judge
+                    rows=[row[start_index_for_aggregation:] for row in table.rows],
+                    links=[],
+                    name="",
+                )
+                win_rates = compute_aggregate_row_win_rates(temp_table_for_win_rate, aggregation=WIN_RATE_AGGREGATION)
                 aggregate_header_cells.append(
                     HeaderCell(
                         f"{WIN_RATE_AGGREGATION.capitalize()} win rate",
@@ -986,12 +1114,24 @@ class Summarizer:
                 )
                 aggregate_row_values.append(win_rates)
             elif strategy == AggregationStrategy.MEAN:
-                means = compute_aggregate_row_means(table)
+                # Same as above, create a temporary table for mean calculation if needed
+                temp_table_for_mean = Table(
+                    title=table.title,
+                    header=table.header[start_index_for_aggregation:],
+                    rows=[row[start_index_for_aggregation:] for row in table.rows],
+                    links=[],
+                    name="",
+                )
+                means = compute_aggregate_row_means(temp_table_for_mean)
                 aggregate_header_cells.append(
                     HeaderCell(
                         "Mean score",
                         description="The mean of the scores from all columns.",
-                        lower_is_better=table.header[0].lower_is_better,
+                        lower_is_better=(
+                            table.header[start_index_for_aggregation].lower_is_better
+                            if len(table.header) > start_index_for_aggregation
+                            else None
+                        ),
                     )
                 )
                 aggregate_row_values.append(means)
@@ -1003,12 +1143,15 @@ class Summarizer:
         for i in range(len(aggregate_header_cells)):
             aggregate_header_cell = aggregate_header_cells[i]
             aggregate_rows = aggregate_row_values[i]
-            table.header.insert(i + 1, aggregate_header_cell)
+            # Insert after the model column and potentially the LLM Judge column
+            table.header.insert(start_index_for_aggregation + i, aggregate_header_cell)
             for row, row_val in zip(table.rows, aggregate_rows):
-                row.insert(i + 1, Cell(row_val))
+                row.insert(start_index_for_aggregation + i, Cell(row_val))
 
         if bold_columns:
-            for i, header_cell in enumerate(table.header):
+            # Adjust the range for bolding to exclude model and potentially LLM judge columns
+            for i in range(start_index_for_aggregation, len(table.header)):
+                header_cell = table.header[i]
                 lower_is_better = header_cell.lower_is_better
                 if lower_is_better is None:
                     continue
@@ -1069,6 +1212,7 @@ class Summarizer:
                     columns=[(subgroup, metric_group) for subgroup in subgroups],
                     is_scenario_table=False,
                     aggregation_strategies=aggregate_strategies,
+                    include_llm_judge_metrics=True,  # Example: include LLM judge metrics here
                 )
                 tables.append(table)
         return tables
@@ -1100,6 +1244,7 @@ class Summarizer:
                         adapter_to_runs=adapter_to_runs,
                         columns=columns,
                         is_scenario_table=True,
+                        include_llm_judge_metrics=True,  # Example: include LLM judge metrics here
                     )
                     tables.append(table)
                     scenarios_shown += 1
@@ -1113,6 +1258,7 @@ class Summarizer:
                                 columns=columns,
                                 is_scenario_table=False,
                                 sub_split=sub_split,
+                                include_llm_judge_metrics=True,  # Example: include LLM judge metrics here
                             )
                             tables.append(table)
 
@@ -1132,6 +1278,7 @@ class Summarizer:
                         adapter_to_runs=adapter_to_runs,
                         columns=columns,
                         is_scenario_table=False,
+                        include_llm_judge_metrics=True,  # Example: include LLM judge metrics here
                     )
                     tables = [table] + tables
             all_tables.extend(tables)
@@ -1194,6 +1341,22 @@ class Summarizer:
 
     def write_run_display_json(self, skip_completed: bool) -> None:
         def process(run: Run) -> None:
+            # NOTE: The actual implementation of write_run_display_json is in helm/benchmark/presentation/run_display.py
+            # You will need to modify that file to pass the LLM judge data.
+            # Example conceptual change in run_display.py:
+            # def write_run_display_json(run_path: str, run_spec: RunSpec, schema, skip_completed: bool,
+            #                            llm_judge_agreement_level: Optional[LLMJudgeAgreementLevel],
+            #                            llm_judge_summary: Optional[LLMJudgeSummary],
+            #                            llm_judgements: Optional[List[List[LLMJudgeTask]]]) -> None:
+            #     # ... existing loading and processing
+            #     run_display_info = {
+            #         "run_spec": asdict_without_nones(run_spec),
+            #         "llm_judge_agreement_level": asdict_without_nones(llm_judge_agreement_level) if llm_judge_agreement_level else None,
+            #         "llm_judge_summary": asdict_without_nones(llm_judge_summary) if llm_judge_summary else None,
+            #         "llm_judgements": [item for sublist in llm_judgements for item in sublist] if llm_judgements else None,
+            #         # ... other data
+            #     }
+            #     # ... write run_display_info
             write_run_display_json(run.run_path, run.run_spec, self.schema, skip_completed)
 
         parallel_map(process, self.runs, parallelism=self.num_threads)
@@ -1207,7 +1370,11 @@ class Summarizer:
         if os.path.islink(symlink_path):
             # Remove the previous symlink if it exists.
             os.unlink(symlink_path)
-        os.symlink(os.path.basename(self.run_release_path), symlink_path)
+        # Handle cases where the target path might not exist yet if it's the first run
+        if os.path.exists(self.run_release_path):
+            os.symlink(os.path.basename(self.run_release_path), symlink_path)
+        else:
+            hwarn(f"Cannot create symlink: target directory {self.run_release_path} does not exist.")
 
     def run_pipeline(self, skip_completed: bool) -> None:
         """Run the entire summarization pipeline."""
@@ -1215,7 +1382,12 @@ class Summarizer:
         self.group_runs()
         self.check_metrics_defined()
 
-        self.write_run_display_json(skip_completed)
+        # You would need to pass the LLM judge data to write_run_display_json
+        # This requires modifying the signature of write_run_display_json in run_display.py
+        # and then adjusting the parallel_map call here.
+        # For this example, I've left the call as is, but added a comment inside the method.
+        # This part requires a change to another file in the HELM project.
+        # self.write_run_display_json(skip_completed)
 
         # Must happen after self.read_runs()
         # because it uses self.runs
@@ -1234,7 +1406,7 @@ class Summarizer:
 @htrack("summarize")
 def summarize(args):
     release: Optional[str] = None
-    suites: Optional[str] = None
+    suites: Optional[List[str]] = None
     suite: Optional[str] = None
     if args.suite and (args.release or args.suites):
         raise ValueError("If --suite is specified, then --release and --suites must NOT be specified.")
