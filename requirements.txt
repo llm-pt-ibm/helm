@@ -84,11 +84,11 @@ gdown==5.2.0
 gitdb==4.0.12
 gitpython==3.1.44
 google-api-core==2.25.1
-google-api-python-client==2.172.0
+google-api-python-client==2.173.0
 google-auth==2.40.3
 google-auth-httplib2==0.2.0
 google-cloud-aiplatform==1.91.0 ; python_full_version < '3.10'
-google-cloud-aiplatform==1.97.0 ; python_full_version >= '3.10'
+google-cloud-aiplatform==1.98.0 ; python_full_version >= '3.10'
 google-cloud-bigquery==3.34.0
 google-cloud-core==2.4.3
 google-cloud-resource-manager==1.14.2
@@ -107,7 +107,7 @@ grpcio-status==1.62.3
 gunicorn==23.0.0
 h11==0.16.0
 h5py==3.14.0
-hf-xet==1.1.3 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.1.5 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
 html2text==2024.2.26
 httpcore==1.0.9
 httplib2==0.22.0
@@ -153,7 +153,7 @@ lpips==0.1.4
 lxml==5.4.0
 mako==1.3.10
 marisa-trie==1.2.1
-markdown==3.8
+markdown==3.8.2
 markdown-it-py==3.0.0
 markupsafe==3.0.2
 matplotlib==3.6.3
@@ -164,7 +164,7 @@ ml-dtypes==0.4.1 ; python_full_version >= '3.13'
 ml-dtypes==0.5.1 ; python_full_version < '3.13'
 mpmath==1.3.0
 msgpack==1.1.1
-multidict==6.4.4
+multidict==6.5.0
 multilingual-clip==1.0.10
 multiprocess==0.70.16
 murmurhash==1.0.13
@@ -197,7 +197,7 @@ omegaconf==2.3.0
 onnxruntime==1.19.2 ; python_full_version < '3.10'
 onnxruntime==1.22.0 ; python_full_version >= '3.10'
 open-clip-torch==2.32.0
-openai==1.86.0
+openai==1.90.0
 opencc==1.1.9
 opencv-python==4.8.1.78
 opencv-python-headless==4.11.0.86
@@ -240,9 +240,9 @@ pydantic==2.11.7
 pydantic-core==2.33.2
 pydload==1.0.9
 pyflakes==2.5.0
-pygments==2.19.1
+pygments==2.19.2
 pyhocon==0.3.61
-pymongo==4.13.1
+pymongo==4.13.2
 pyparsing==3.2.3
 pypinyin==0.49.0
 pyreadline3==3.5.4 ; sys_platform == 'win32'
@@ -261,7 +261,7 @@ qwen-vl-utils==0.0.11
 regex==2024.11.6
 reka-api==2.0.0
 requests==2.32.4
-retrying==1.3.4
+retrying==1.3.5
 rich==13.9.4
 rouge-score==0.1.2
 rsa==4.7.2
@@ -274,7 +274,8 @@ scikit-image==0.25.2 ; python_full_version >= '3.10'
 scikit-learn==1.6.1 ; python_full_version < '3.10'
 scikit-learn==1.7.0 ; python_full_version >= '3.10'
 scipy==1.13.1 ; python_full_version < '3.10'
-scipy==1.15.3 ; python_full_version >= '3.10'
+scipy==1.15.3 ; python_full_version == '3.10.*'
+scipy==1.16.0 ; python_full_version >= '3.11'
 seaborn==0.11.2
 selenium==4.17.2
 sentencepiece==0.2.0
@@ -346,7 +347,7 @@ uncertainty-calibration==0.1.4
 unidecode==1.3.8
 uritemplate==4.2.0
 urllib3==1.26.20 ; python_full_version < '3.10'
-urllib3==2.4.0 ; python_full_version >= '3.10'
+urllib3==2.5.0 ; python_full_version >= '3.10'
 virtualenv==20.31.2
 wandb==0.20.1
 wasabi==1.1.3
