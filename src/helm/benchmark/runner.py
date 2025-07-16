@@ -288,6 +288,7 @@ class Runner:
         )
 
         # Execute (fill up results)
+        print(scenario_state)
         scenario_state = self.executor.execute(scenario_state)
 
         # Annotate (post-process the results)

@@ -38,7 +38,6 @@ class Power9Client(CachingClient):
             credentials = get_credentials()
 
             self.base_url = credentials.get("ibm-graniteBaseUrl")
-            print(f"\n\n\n\n{self.base_url}\n\n\n\n")
             if not self.base_url:
                 raise ValueError("Credential 'base_url' is missing in section 'power9_api' of credentials.conf.")
 
@@ -48,7 +47,7 @@ class Power9Client(CachingClient):
 
             self.hf_token = credentials.get("ibm-graniteHfToken")
             if not self.hf_token:
-                raise ValueError("Credential 'hf_token' (Hugging Face token) is missing in section 'power9_api' of credentials.conf.")
+                raise ValueError("Credential 'hf_token' (HuggingFace token) is missing in section 'power9_api' of credentials.conf.")
 
 
         except Exception as e:
@@ -107,7 +106,7 @@ class Power9Client(CachingClient):
                 url = f"{self.base_url}/generate"
                 print(url)
                 logger.debug(f"Sending request to {url} with payload: {raw_request}")
-                
+                print("cheguei aqui")
                 response = requests.post(url, json=raw_request, headers=headers, timeout=self.timeout)
                 response.raise_for_status()
                 return response.json()
@@ -121,21 +120,15 @@ class Power9Client(CachingClient):
             generated_text = result_data.get("text", "")
             log_probs = result_data.get("log_probs", [])
 
+            # first, the text is tokenized by the tokenizer
+            # it is important that the tokenizer used here is the same as the one used in the model
             tokenized_text = self.tokenizer.tokenize(generated_text)
             
-            if len(tokenized_text) != len(log_probs):
-                logger.warning(
-                    f"The number of tokens ({len(tokenized_text)}) is not the same as the number of log_probs produced. ({len(log_probs)})."
-                    "Therefore, the logprobs will be ignored."
-                )
-                tokens: List[Token] = [Token(text=text, logprob=0) for text in tokenized_text]
-                total_logprob = 0
-            else:
-                tokens: List[Token] = [
-                    Token(text=token, logprob=log_prob)
-                    for token, log_prob in zip(tokenized_text, log_probs)
-                ]
-                total_logprob = sum(log_probs)
+            tokens: List[Token] = [
+                Token(text=token, logprob=log_prob)
+                for token, log_prob in zip(tokenized_text, log_probs)
+            ]
+            total_logprob = sum(log_probs)
 
             completions = [
                 GeneratedOutput(
