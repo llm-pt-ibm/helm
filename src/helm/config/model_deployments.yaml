@@ -4036,6 +4036,17 @@ model_deployments:
       class_name: "helm.clients.audio_language.llama_omni_client.LlamaOmniAudioLMClient"
 
 # IBM - Granite 3.0
+
+  # IBM Granite Power 9 Client
+  - name: ibm-granite/granite-3.3-8b-instruct
+    model_name: ibm-granite/granite-3.3-8b-instruct
+    tokenizer_name: ibm/granite-3.3-8b-instruct
+    max_sequence_length: 4096
+    client_spec:
+      class_name: "helm.clients.power_9_client.Power9Client"
+      args:
+        pretrained_model_name_or_path: ibm-granite/granite-3.3-8b-instruct 
+
   - name: huggingface/granite-3.0-2b-base
     model_name: ibm-granite/granite-3.0-2b-base
     tokenizer_name: ibm-granite/granite-3.0-2b-base
