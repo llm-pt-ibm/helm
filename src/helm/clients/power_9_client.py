@@ -37,7 +37,7 @@ class Power9Client(CachingClient):
         try:
             credentials = get_credentials()
 
-            self.base_url = credentials.get("ibm-graniteBaseUrl")
+            self.base_url = credentials.get("ibm-PowerBaseUrl")
             if not self.base_url:
                 raise ValueError("Credential 'base_url' is missing in section 'power9_api' of credentials.conf.")
 
