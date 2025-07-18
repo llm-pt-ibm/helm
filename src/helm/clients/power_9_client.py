@@ -45,7 +45,7 @@ class Power9Client(CachingClient):
             if not self.api_key:
                 raise ValueError("Credential 'api_key' is missing in section 'power9_api' of credentials.conf.")
 
-            self.hf_token = credentials.get("ibm-graniteHfToken")
+            self.hf_token = credentials.get("ibm-PowerHFToken")
             if not self.hf_token:
                 raise ValueError("Credential 'hf_token' (HuggingFace token) is missing in section 'power9_api' of credentials.conf.")
 
