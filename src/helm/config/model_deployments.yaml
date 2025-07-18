@@ -4330,15 +4330,16 @@ model_deployments:
         watsonx_model_name: mistralai/mixtral-8x7b-instruct-v01
         region: Dallas
 
-  - name: ibm/granite-3.3-8b-instruct
-    model_name: ibm/granite-3.3-8b-instruct
-    tokenizer_name: ibm/granite-3.3-8b-instruct
-    max_sequence_length: 131072
-    client_spec:
-      class_name: "helm.clients.ibm_client.IbmTextClient"
-      args:
-        watsonx_model_name: ibm/granite-3-3-8b-instruct
-        region: Dallas
+  # - name: ibm/granite-3.3-8b-instruct
+  #   model_name: ibm/granite-3.3-8b-instruct
+  #   tokenizer_name: ibm/granite-3.3-8b-instruct
+  #   max_sequence_length: 131072
+  #   client_spec:
+  #     class_name: "helm.clients.ibm_client.IbmTextClient"
+  #     args:
+  #       watsonx_model_name: ibm/granite-3-3-8b-instruct
+  #       region: Dallas
+
 
   # Vietnamese
   - name: ura-hcmut/ura-llama-2.1-8b
