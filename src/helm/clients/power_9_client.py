@@ -41,7 +41,7 @@ class Power9Client(CachingClient):
             if not self.base_url:
                 raise ValueError("Credential 'base_url' is missing in section 'power9_api' of credentials.conf.")
 
-            self.api_key = credentials.get("ibm-graniteApiKey")
+            self.api_key = credentials.get("ibm-PowerApiKey")
             if not self.api_key:
                 raise ValueError("Credential 'api_key' is missing in section 'power9_api' of credentials.conf.")
 
