@@ -563,6 +563,14 @@ models:
     release_date: 2025-09-29
     tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
+  - name: anthropic/claude-haiku-4-5-20251001
+    display_name: Claude 4.5 Haiku (20251001)
+    description: Claude 4.5 Haiku is a hybrid model from Anthropic in their small, fast model class that is particularly effective at coding tasks and computer use. ([blog](https://www.anthropic.com/news/claude-haiku-4-5), [system card](https://assets.anthropic.com/m/99128ddd009bdcb/Claude-Haiku-4-5-System-Card.pdf))
+    creator_organization_name: Anthropic
+    access: limited
+    release_date: 2025-10-15
+    tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
   - name: anthropic/stanford-online-all-v4-s3
     display_name: Anthropic-LM v4-s3 (52B)
     description: A 52B parameter language model, trained using reinforcement learning from human feedback [paper](https://arxiv.org/pdf/2204.05862.pdf).
@@ -1342,6 +1350,22 @@ models:
     access: limited
     release_date: 2025-06-17
     tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, AUDIO_LANGUAGE_MODEL_TAG, GOOGLE_GEMINI_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: google/gemini-3-pro-preview
+    display_name: Gemini 3 Pro (Preview)
+    description: Gemini 3.0 models are thinking models, capable of reasoning through their thoughts before responding, resulting in enhanced performance and improved accuracy. ([blog](https://blog.google/products/gemini/gemini-3/), [blog](https://blog.google/technology/developers/gemini-3-developers/))
+    creator_organization_name: Google
+    access: limited
+    release_date: 2025-11-18
+    tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, AUDIO_LANGUAGE_MODEL_TAG, GOOGLE_GEMINI_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: google/gemini-robotics-er-1.5-preview
+    display_name: Gemini Robotics-ER 1.5
+    description: Gemini Robotics-ER 1.5 is a vision-language model (VLM) designed for advanced reasoning in the physical world, allowing robots to interpret complex visual data, perform spatial reasoning, and plan actions from natural language commands.
+    creator_organization_name: Google
+    access: limited
+    release_date: 2025-09-25
+    tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, GOOGLE_GEMINI_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: google/gemma-2b
     display_name: Gemma (2B)
@@ -2684,6 +2708,14 @@ models:
     release_date: 2024-07-14  # Blog post has no date, so use the date from this news article https://www.cnbc.com/2025/07/14/alibaba-backed-moonshot-releases-kimi-k2-ai-rivaling-chatgpt-claude.html
     tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
+  - name: moonshotai/kimi-k2-thinking
+    display_name: Kimi K2 Thinking
+    description:  Kimi K2 Thinking is an open-weights thinking model that uses native INT4 quantization and maintains coherent goal-directed behavior across up to 200–300 consecutive tool invocations. ([blog](https://moonshotai.github.io/Kimi-K2/thinking.html))
+    creator_organization_name: Moonshot AI
+    access: open
+    release_date: 2024-11-06  # Blog post has no date, so use the date from Hacker News https://news.ycombinator.com/item?id=45836070
+    tags: [TEXT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
   # MosaicML
   - name: mosaicml/mpt-7b
     display_name: MPT (7B)
@@ -3124,6 +3156,14 @@ models:
     creator_organization_name: OpenAI
     access: limited
     release_date: 2025-08-07
+    tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, OPENAI_CHATGPT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
+
+  - name: openai/gpt-5.1-2025-11-13
+    display_name: GPT-5.1 (2025-11-13)
+    description: GPT-5.1 (2025-11-13) is a model in the GPT-5 model family, and has similar training for code generation, bug fixing, refactoring, instruction following, long context and tool calling. ([blog](https://openai.com/index/gpt-5-1-for-developers/))
+    creator_organization_name: OpenAI
+    access: limited
+    release_date: 2025-11-13
     tags: [TEXT_MODEL_TAG, VISION_LANGUAGE_MODEL_TAG, OPENAI_CHATGPT_MODEL_TAG, LIMITED_FUNCTIONALITY_TEXT_MODEL_TAG, INSTRUCTION_FOLLOWING_MODEL_TAG]
 
   - name: openai/whisper-1_gpt-4o-2024-11-20

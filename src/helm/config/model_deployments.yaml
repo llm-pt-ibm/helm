@@ -737,6 +737,13 @@ model_deployments:
     client_spec:
       class_name: "helm.clients.anthropic_client.AnthropicMessagesClient"
 
+  - name: anthropic/claude-haiku-4-5-20251001
+    model_name: anthropic/claude-haiku-4-5-20251001
+    tokenizer_name: anthropic/claude
+    max_sequence_length: 200000
+    client_spec:
+      class_name: "helm.clients.anthropic_client.AnthropicMessagesClient"
+
   - name: anthropic/stanford-online-all-v4-s3
     deprecated: true # Closed model, not accessible via API
     model_name: anthropic/stanford-online-all-v4-s3
@@ -1172,6 +1179,23 @@ model_deployments:
     # TODO: Max output tokens: 65536
     client_spec:
       class_name: "helm.clients.vertexai_client.VertexAIChatClient"
+
+  - name: google/gemini-3-pro-preview
+    model_name: google/gemini-3-pro-preview
+    tokenizer_name: google/gemma-2b  # Gemini has no tokenizer endpoint, so we approximate by using Gemma's tokenizer.
+    max_sequence_length: 1048576  # Source: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro
+    # TODO: Max output tokens: 65536
+    client_spec:
+      class_name: "helm.clients.google_genai_client.GoogleGenAIClient"
+
+  - name: google/gemini-robotics-er-1.5-preview
+    model_name: google/gemini-robotics-er-1.5-preview
+    tokenizer_name: google/gemma-2b  # Gemini has no tokenizer endpoint, so we approximate by using Gemma's tokenizer.
+    max_sequence_length: 1048576  # Source: https://deepmind.google/models/gemini-robotics/gemini-robotics-er/
+    client_spec:
+      class_name: "helm.clients.google_genai_client.GoogleGenAIClient"
+      args:
+        genai_use_vertexai: False
 
   - name: google/gemini-1.5-flash-8b-001
     model_name: google/gemini-1.5-flash-8b-001
@@ -1850,6 +1874,13 @@ model_deployments:
   - name: together/kimi-k2-instruct
     model_name: moonshotai/kimi-k2-instruct
     tokenizer_name: moonshotai/kimi-k2-instruct
+    max_sequence_length: 131072
+    client_spec:
+      class_name: "helm.clients.together_client.TogetherChatClient"
+
+  - name: together/kimi-k2-thinking
+    model_name: moonshotai/kimi-k2-thinking
+    tokenizer_name: moonshotai/kimi-k2-thinking
     max_sequence_length: 131072
     client_spec:
       class_name: "helm.clients.together_client.TogetherChatClient"
@@ -2673,6 +2704,13 @@ model_deployments:
 
   - name: openai/gpt-5-nano-2025-08-07
     model_name: openai/gpt-5-nano-2025-08-07
+    tokenizer_name: openai/o200k_base
+    max_sequence_length: 400000
+    client_spec:
+      class_name: "helm.clients.openai_responses_client.OpenAIResponseClient"
+
+  - name: openai/gpt-5.1-2025-11-13
+    model_name: openai/gpt-5.1-2025-11-13
     tokenizer_name: openai/o200k_base
     max_sequence_length: 400000
     client_spec:
