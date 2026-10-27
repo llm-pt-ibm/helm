@@ -5417,7 +5417,6 @@ model_deployments:
         dspy_api_model: openai/o3-mini-2025-01-31
         dspy_api_base: null
 
-
   - name: huggingface/manaca-1b-base
     model_name: aiinstitutelncc/manaca-1b-base
     tokenizer_name: aiinstitutelncc/manaca-1b-base
