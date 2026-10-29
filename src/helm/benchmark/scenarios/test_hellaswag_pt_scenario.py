@@ -23,9 +23,7 @@ def test_hellaswag_pt_scenario():
     # Locate a known example by context rather than depending on dataset order.
     # Source ID: hellaswag/validation/1559. Its label is "3" (fourth ending).
     expected_context = "Uma mulher de terno vermelho está falando atrás de uma mesa. um homem"
-    matching_instances = [
-        instance for instance in instances if instance.input.text == expected_context
-    ]
+    matching_instances = [instance for instance in instances if instance.input.text == expected_context]
     assert len(matching_instances) == 1, "Expected exactly one matching example"
     instance = matching_instances[0]
 

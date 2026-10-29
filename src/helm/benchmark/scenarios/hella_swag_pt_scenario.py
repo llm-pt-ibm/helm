@@ -11,6 +11,7 @@ from helm.benchmark.scenarios.scenario import (
     Output,
 )
 
+
 class HellaSwag_PT_Scenario(Scenario):
     """
     Multiple-choice commonsense reasoning using Multilingual HellaSwag.
@@ -30,7 +31,7 @@ class HellaSwag_PT_Scenario(Scenario):
         cache_dir = str(Path(output_path) / "data")
 
         dataset = load_dataset("alexandrainst/m_hellaswag", "pt", split="val", cache_dir=cache_dir)
-        
+
         for example in dataset:
 
             example_id = example["id"]
@@ -40,10 +41,7 @@ class HellaSwag_PT_Scenario(Scenario):
             if not isinstance(context, str) or not context.strip():
                 raise ValueError(f"{example_id}: empty or invalid context")
 
-            if any(
-                not isinstance(text, str) or not text.strip()
-                for text in endings
-            ):
+            if any(not isinstance(text, str) or not text.strip() for text in endings):
                 raise ValueError(f"{example_id}: empty or invalid alternative")
 
             try:
@@ -53,7 +51,6 @@ class HellaSwag_PT_Scenario(Scenario):
 
             if not 0 <= correct_index < len(endings):
                 raise ValueError(f"{example_id}: answer label out of range")
-
 
             references = [
                 Reference(

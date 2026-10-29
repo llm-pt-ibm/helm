@@ -4,10 +4,11 @@ from helm.benchmark.metrics.common_metric_specs import get_exact_match_metric_sp
 from helm.benchmark.run_spec import RunSpec, run_spec_function
 from helm.benchmark.scenarios.scenario import ScenarioSpec
 
+
 @run_spec_function("hellaswag_pt")
 def get_hellaswag_pt_spec() -> RunSpec:
     scenario_spec = ScenarioSpec(
-        class_name="helm.benchmark.scenarios.hella_swag_pt_scenario.HellaSwag_PT_Scenario",args={}
+        class_name="helm.benchmark.scenarios.hella_swag_pt_scenario.HellaSwag_PT_Scenario", args={}
     )
 
     adapter_spec = get_multiple_choice_adapter_spec(
